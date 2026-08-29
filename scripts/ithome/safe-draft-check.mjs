@@ -7,20 +7,30 @@ const args = process.argv.slice(2);
 const dayIndex = args.indexOf('--day');
 const day = dayIndex >= 0 ? Number(args[dayIndex + 1]) : NaN;
 if (!Number.isInteger(day) || day < 1 || day > 30) {
-  console.error('Usage: npm run ithome:safe-check -- --day N');
+  console.error('Usage: pnpm ithome:safe-check -- --day N');
   process.exit(2);
 }
 
 const padded = String(day).padStart(2, '0');
 const expectedPrefix = `Day ${day}`;
 const storageStatePath = path.resolve('.playwright/ithome-storage-state.json');
+const draftMapPath = path.resolve('.playwright/ithome-drafts.json');
 
-try {
-  await fs.access(storageStatePath);
-} catch {
-  console.error(`Missing iThome browser session: ${storageStatePath}`);
-  console.error('Run: npm run ithome:save-auth');
-  process.exit(3);
+for (const required of [storageStatePath, draftMapPath]) {
+  try {
+    await fs.access(required);
+  } catch {
+    console.error(`Missing local iThome state: ${required}`);
+    console.error('Run: pnpm ithome:save-auth and pnpm ithome:sync-draft -- --day N');
+    process.exit(3);
+  }
+}
+
+const draftMap = JSON.parse(await fs.readFile(draftMapPath, 'utf8'));
+const draftEntry = draftMap[padded];
+if (!draftEntry?.draftUrl) {
+  console.error(`No saved draft URL for Day ${padded}. Run: pnpm ithome:sync-draft -- --day ${day}`);
+  process.exit(4);
 }
 
 const browser = await chromium.launch({ headless: false });
@@ -34,44 +44,15 @@ const fail = async (message) => {
   process.exit(1);
 };
 
-console.log(`[safe-check] Day ${padded}: opening iT 邦幫忙...`);
-await page.goto('https://ithelp.ithome.com.tw/', { waitUntil: 'domcontentloaded' });
-
-if (page.url().includes('login')) {
-  await fail('saved session is not logged in');
-}
-
-const ironPost = page.getByText('鐵人發文', { exact: true }).first();
-if (!(await ironPost.isVisible().catch(() => false))) {
-  await fail('cannot find 「鐵人發文」 on the logged-in page');
-}
-
-console.log('[safe-check] Found 「鐵人發文」.');
-await ironPost.click();
-await page.waitForLoadState('domcontentloaded');
-
-const seriesText = 'AI 都會寫程式了，我還要學什麼？';
-const seriesCandidate = page.getByText(seriesText, { exact: false }).first();
-if (await seriesCandidate.isVisible().catch(() => false)) {
-  console.log('[safe-check] Found expected ironman series selector.');
-  await seriesCandidate.click();
-  await page.waitForLoadState('domcontentloaded').catch(() => {});
-}
-
-console.log('[safe-check] Looking for the target draft without submitting anything...');
-
-// iT 邦幫忙 may land on a new-post editor first. Search the current page for a
-// draft link whose visible text contains the Day marker; if none exists, stop.
-const targetByText = page.getByText(new RegExp(`Day\\s*0?${day}\\b`, 'i')).first();
-if (await targetByText.isVisible().catch(() => false)) {
-  await targetByText.click();
-  await page.waitForLoadState('domcontentloaded').catch(() => {});
-} else {
-  await fail(`could not locate a visible Day ${day} draft link on the current iThome page`);
-}
+console.log(`[safe-check] Day ${padded}: opening saved draft directly...`);
+console.log(`[safe-check] Draft URL: ${draftEntry.draftUrl}`);
+await page.goto(draftEntry.draftUrl, { waitUntil: 'domcontentloaded' });
+if (page.url().includes('login')) await fail('saved session is not logged in');
 
 const titleInputs = [
   page.locator('input[name="title"]'),
+  page.locator('input[name*="title" i]'),
+  page.locator('input[id*="title" i]'),
   page.locator('input[placeholder*="標題"]'),
   page.locator('textarea[placeholder*="標題"]'),
 ];
@@ -79,29 +60,23 @@ const titleInputs = [
 let title = '';
 for (const locator of titleInputs) {
   if (await locator.first().isVisible().catch(() => false)) {
-    title = (await locator.first().inputValue().catch(() => '')) || (await locator.first().textContent().catch(() => '')) || '';
+    title = (await locator.first().inputValue().catch(() => '')) || '';
     if (title) break;
   }
 }
 
-if (!title) {
-  // Some versions render the editable title outside an input.
-  title = (await page.locator('h1, h2, [contenteditable="true"]').first().textContent().catch(() => '')) || '';
-}
+if (!title) title = (await page.locator('h1, h2, [contenteditable="true"]').first().textContent().catch(() => '')) || '';
 
 if (!title.includes(expectedPrefix) && !title.match(new RegExp(`Day\\s*0?${day}\\b`, 'i'))) {
-  await fail(`opened page does not look like Day ${day}; detected title: ${JSON.stringify(title)}`);
+  await fail(`opened draft does not look like Day ${day}; detected title: ${JSON.stringify(title)}`);
 }
 
 const publishText = page.getByText('發表文章', { exact: true }).first();
 if (!(await publishText.isVisible().catch(() => false))) {
-  // The control may be hidden inside the dropdown next to 「儲存草稿」.
   const draftButton = page.getByText('儲存草稿', { exact: true }).first();
   if (await draftButton.isVisible().catch(() => false)) {
     const nearbyToggle = draftButton.locator('xpath=following-sibling::*[1]');
-    if (await nearbyToggle.isVisible().catch(() => false)) {
-      await nearbyToggle.click();
-    }
+    if (await nearbyToggle.isVisible().catch(() => false)) await nearbyToggle.click();
   }
 }
 
