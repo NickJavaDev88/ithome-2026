@@ -10,13 +10,12 @@
     "check": "astro check",
     "ithome:prepare": "node scripts/ithome/prepare.mjs",
     "ithome:save-auth": "node scripts/ithome/save-storage-state.mjs",
-    "ithome:publish": "node scripts/ithome/publish.mjs"
+    "ithome:publish": "node scripts/ithome/publish.mjs",
+    "ithome:safe-check": "node scripts/ithome/safe-draft-check.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",
-    "astro": "^7.2.9"
-  },
-  "devDependencies": {
+    "astro": "^7.2.9",
     "playwright": "^1.55.0"
   }
 }
