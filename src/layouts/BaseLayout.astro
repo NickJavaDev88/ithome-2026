@@ -11,6 +11,7 @@ const {
   description = '從「做得出來」到學會開發的 30 天',
 } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+const rssUrl = new URL(`${import.meta.env.BASE_URL}rss.xml`, Astro.site);
 ---
 <!doctype html>
 <html lang="zh-Hant">
@@ -20,7 +21,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <link rel="alternate" type="application/rss+xml" title="RSS" href={new URL('rss.xml', Astro.site)} />
+    <link rel="alternate" type="application/rss+xml" title="RSS" href={rssUrl} />
     <title>{title}</title>
   </head>
   <body>
