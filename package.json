@@ -9,6 +9,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "ithome:prepare": "node scripts/ithome/prepare.mjs",
+    "ithome:save-auth": "node scripts/ithome/save-storage-state.mjs",
     "ithome:publish": "node scripts/ithome/publish.mjs"
   },
   "dependencies": {
