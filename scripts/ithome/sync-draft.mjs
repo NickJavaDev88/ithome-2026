@@ -87,23 +87,64 @@ async function visibleFirst(locators) {
   return null;
 }
 
+async function navigateViaVisibleText(locator, label) {
+  const candidate = locator.first();
+  if (!(await candidate.isVisible().catch(() => false))) return false;
+
+  const startingUrl = page.url();
+  const targetInfo = await candidate.evaluate((el) => {
+    const anchor = el.closest('a');
+    return {
+      tag: el.tagName.toLowerCase(),
+      href: anchor?.href || null,
+      text: String(el.textContent ?? '').trim(),
+    };
+  }).catch(() => ({ tag: null, href: null, text: null }));
+
+  console.log(`[sync-draft] ${label}: ${JSON.stringify(targetInfo)}`);
+
+  const popupPromise = context.waitForEvent('page', { timeout: 1500 }).catch(() => null);
+  await candidate.click().catch(() => {});
+  const popup = await popupPromise;
+  if (popup) {
+    await popup.waitForLoadState('domcontentloaded').catch(() => {});
+    console.log(`[sync-draft] ${label} opened another page: ${popup.url()}`);
+    await popup.close().catch(() => {});
+  }
+
+  await page.waitForTimeout(700);
+  if (page.url() !== startingUrl) {
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
+    console.log(`[sync-draft] ${label} navigated to: ${page.url()}`);
+    return true;
+  }
+
+  if (targetInfo.href) {
+    console.log(`[sync-draft] ${label} click did not navigate; following href directly: ${targetInfo.href}`);
+    await page.goto(targetInfo.href, { waitUntil: 'domcontentloaded' });
+    return true;
+  }
+
+  return false;
+}
+
 console.log(`[sync-draft] Day ${padded}: opening iT 邦幫忙...`);
 await page.goto('https://ithelp.ithome.com.tw/', { waitUntil: 'domcontentloaded' });
 if (page.url().includes('login')) await fail('saved session is not logged in');
 
-const ironPost = page.getByText('鐵人發文', { exact: true }).first();
-if (!(await ironPost.isVisible().catch(() => false))) {
+const ironPost = page.getByText('鐵人發文', { exact: true });
+if (!(await ironPost.first().isVisible().catch(() => false))) {
   await fail('cannot find 「鐵人發文」 on the logged-in page');
 }
-await ironPost.click();
-await page.waitForLoadState('domcontentloaded').catch(() => {});
+if (!(await navigateViaVisibleText(ironPost, '鐵人發文'))) {
+  await fail('found 「鐵人發文」 text but could not navigate to its destination');
+}
 
 const seriesText = 'AI 都會寫程式了，我還要學什麼？';
-const seriesCandidate = page.getByText(seriesText, { exact: false }).first();
-if (await seriesCandidate.isVisible().catch(() => false)) {
+const seriesCandidate = page.getByText(seriesText, { exact: false });
+if (await seriesCandidate.first().isVisible().catch(() => false)) {
   console.log('[sync-draft] Selecting the expected ironman series...');
-  await seriesCandidate.click();
-  await page.waitForLoadState('domcontentloaded').catch(() => {});
+  await navigateViaVisibleText(seriesCandidate, 'series selector');
 }
 
 console.log(`[sync-draft] Editor URL: ${page.url()}`);
