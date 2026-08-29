@@ -5,8 +5,8 @@
 ## 開發
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ## 內容
