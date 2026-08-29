@@ -39,6 +39,7 @@ const lastRead = {
       <div class="sidebar-heading">
         <h2>系列導覽</h2>
         <p>30 天從學習起點，一路整理產品、工程與 AI 協作。</p>
+        <a class="sidebar-home-link" href={base}>首頁</a>
       </div>
 
       <nav class="series-tree" aria-label="30 天系列文章">
@@ -73,15 +74,9 @@ const lastRead = {
           </section>
         ))}
       </nav>
-
-      <a class="back-home" href={base}>← 回到系列導覽</a>
     </aside>
 
     <main class="reading-pane">
-      <div class="reading-topbar">
-        <a href={base}>← 回到系列導覽</a>
-      </div>
-
       <article class="article-shell">
         <div class="article-meta">
           <span class="article-day">Day {String(post.data.day).padStart(2, '0')}</span>
