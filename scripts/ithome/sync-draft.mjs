@@ -29,9 +29,52 @@ const context = await browser.newContext({ storageState: storageStatePath });
 const page = await context.newPage();
 
 const screenshotPath = `.playwright/sync-draft-day-${padded}.png`;
+const diagnosticsPath = `.playwright/sync-draft-day-${padded}-diagnostics.json`;
+
+async function collectDiagnostics() {
+  const controls = await page.locator('input, textarea, [contenteditable="true"], iframe').evaluateAll((elements) =>
+    elements.map((el, index) => ({
+      index,
+      tag: el.tagName.toLowerCase(),
+      type: el.getAttribute('type'),
+      name: el.getAttribute('name'),
+      id: el.id || null,
+      placeholder: el.getAttribute('placeholder'),
+      ariaLabel: el.getAttribute('aria-label'),
+      className: typeof el.className === 'string' ? el.className : null,
+      contenteditable: el.getAttribute('contenteditable'),
+      visible: Boolean(el.offsetWidth || el.offsetHeight || el.getClientRects().length),
+      valuePreview: 'value' in el ? String(el.value ?? '').slice(0, 120) : null,
+      textPreview: String(el.textContent ?? '').trim().slice(0, 120),
+    })),
+  ).catch(() => []);
+
+  const diagnostics = {
+    url: page.url(),
+    title: await page.title().catch(() => ''),
+    controls,
+  };
+  await fs.mkdir(path.dirname(diagnosticsPath), { recursive: true });
+  await fs.writeFile(diagnosticsPath, `${JSON.stringify(diagnostics, null, 2)}\n`, 'utf8');
+  return diagnostics;
+}
+
 const fail = async (message) => {
   console.error(`DRAFT SYNC FAILED: ${message}`);
+  console.error(`[sync-draft] Current URL: ${page.url()}`);
+  const diagnostics = await collectDiagnostics();
+  const visibleControls = diagnostics.controls.filter((control) => control.visible);
+  if (visibleControls.length) {
+    console.error('[sync-draft] Visible editable controls:');
+    for (const control of visibleControls) {
+      console.error(`  ${JSON.stringify(control)}`);
+    }
+  } else {
+    console.error('[sync-draft] No visible input/textarea/contenteditable/iframe controls detected.');
+  }
+  console.error(`[sync-draft] Diagnostics: ${diagnosticsPath}`);
   await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {});
+  console.error(`[sync-draft] Screenshot: ${screenshotPath}`);
   await browser.close();
   process.exit(1);
 };
@@ -63,16 +106,24 @@ if (await seriesCandidate.isVisible().catch(() => false)) {
   await page.waitForLoadState('domcontentloaded').catch(() => {});
 }
 
+console.log(`[sync-draft] Editor URL: ${page.url()}`);
+
 const titleInput = await visibleFirst([
   page.locator('input[name="title"]'),
+  page.locator('input[name*="title" i]'),
+  page.locator('input[id*="title" i]'),
   page.locator('input[placeholder*="標題"]'),
   page.locator('textarea[placeholder*="標題"]'),
+  page.getByLabel(/標題/).locator('input'),
+  page.locator('label').filter({ hasText: /標題/ }).locator('input'),
 ]);
 if (!titleInput) await fail('could not locate the article title field');
 
 const bodyTextarea = await visibleFirst([
   page.locator('textarea[name="content"]'),
   page.locator('textarea[name="body"]'),
+  page.locator('textarea[name*="content" i]'),
+  page.locator('textarea[id*="content" i]'),
   page.locator('textarea[placeholder*="內容"]'),
   page.locator('textarea[placeholder*="文章"]'),
 ]);
