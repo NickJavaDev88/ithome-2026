@@ -30,6 +30,7 @@ try {
 const browser = await chromium.launch({ headless: false });
 const context = await browser.newContext({ storageState: storageStatePath });
 const page = await context.newPage();
+page.setDefaultTimeout(10000);
 
 async function collectDiagnostics() {
   const controls = await page.locator('input, textarea, [contenteditable="true"], iframe, button, a').evaluateAll((elements) =>
@@ -109,16 +110,25 @@ async function saveDraftUrl(url) {
   await fs.writeFile(draftMapPath, `${JSON.stringify(map, null, 2)}\n`, 'utf8');
 }
 
+async function gotoResilient(url, label) {
+  try {
+    await page.goto(url, { waitUntil: 'commit', timeout: 15000 });
+  } catch (error) {
+    console.warn(`[sync-draft] ${label} navigation timed out after request commit; continuing with current page: ${page.url()}`);
+  }
+  await page.waitForTimeout(600);
+}
+
 console.log(`[sync-draft] Day ${padded}: opening iT 邦幫忙...`);
-await page.goto('https://ithelp.ithome.com.tw/', { waitUntil: 'domcontentloaded' });
+await gotoResilient('https://ithelp.ithome.com.tw/', 'home');
 if (page.url().includes('login')) await fail('saved session is not logged in');
 
 const ironPost = page.getByText('鐵人發文', { exact: true }).first();
 if (!(await ironPost.isVisible().catch(() => false))) await fail('cannot find 「鐵人發文」 on the logged-in page');
 
 console.log('[sync-draft] Clicking 「鐵人發文」 to open the series chooser...');
-await ironPost.click();
-await page.waitForTimeout(500);
+await ironPost.click({ noWaitAfter: true });
+await page.waitForTimeout(700);
 
 const chooserText = page.getByText(/選擇.*鐵人.*主題|選擇.*發文/i).first();
 if (await chooserText.isVisible().catch(() => false)) console.log('[sync-draft] Series chooser is visible.');
@@ -129,13 +139,29 @@ const seriesCandidate = page.getByText(seriesText, { exact: false }).first();
 if (!(await seriesCandidate.isVisible().catch(() => false))) await fail('could not find the expected ironman series in the chooser');
 
 console.log('[sync-draft] Selecting the expected ironman series...');
-const beforeSeriesUrl = page.url();
-await seriesCandidate.click();
-await Promise.race([
-  page.waitForURL((url) => url.toString() !== beforeSeriesUrl, { timeout: 5000 }),
-  page.waitForTimeout(1200),
-]).catch(() => {});
-await page.waitForLoadState('domcontentloaded').catch(() => {});
+await seriesCandidate.click({ noWaitAfter: true });
+
+// iThome can complete the click but keep Playwright waiting on slow navigation.
+// Judge success from the editor URL or editor controls instead of a full page-load event.
+let editorReady = false;
+for (let attempt = 0; attempt < 20; attempt += 1) {
+  if (/\/articles\/\d+\/draft(?:$|[?#])/.test(page.url())) {
+    editorReady = true;
+    break;
+  }
+  const visibleTitle = await visibleFirst([
+    page.locator('input[name="title"]'),
+    page.locator('input[name*="title" i]'),
+    page.locator('input[id*="title" i]'),
+    page.locator('input[placeholder*="標題"]'),
+  ]);
+  if (visibleTitle) {
+    editorReady = true;
+    break;
+  }
+  await page.waitForTimeout(250);
+}
+if (!editorReady) await fail('series selection did not reach an iThome draft editor');
 console.log(`[sync-draft] Editor URL: ${page.url()}`);
 
 const titleInput = await visibleFirst([
@@ -196,11 +222,14 @@ const saveDraft = page.getByText('儲存草稿', { exact: true }).first();
 if (!(await saveDraft.isVisible().catch(() => false))) await fail('could not locate 「儲存草稿」; nothing was submitted');
 
 console.log('[sync-draft] Title/body verified. Saving as draft once...');
-await saveDraft.click();
-await page.waitForLoadState('domcontentloaded').catch(() => {});
-await page.waitForTimeout(1200);
+await saveDraft.click({ noWaitAfter: true });
 
-const draftUrl = page.url();
+let draftUrl = page.url();
+for (let attempt = 0; attempt < 20; attempt += 1) {
+  draftUrl = page.url();
+  if (/\/articles\/\d+\/draft(?:$|[?#])/.test(draftUrl)) break;
+  await page.waitForTimeout(250);
+}
 if (!/\/articles\/\d+\/draft(?:$|[?#])/.test(draftUrl)) {
   await fail(`draft save completed but current URL does not look like an iThome draft URL: ${draftUrl}`);
 }
