@@ -1,0 +1,36 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { dayPath, type Post } from '../lib/posts';
+
+interface Props {
+  post: Post;
+  previous?: Post;
+  next?: Post;
+}
+
+const { post, previous, next } = Astro.props;
+const date = post.data.publishDate?.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
+---
+<BaseLayout title={post.data.title} description={post.data.description ?? post.data.title}>
+  <article class="article-shell">
+    <div class="article-meta">
+      <span>Day {String(post.data.day).padStart(2, '0')}</span>
+      <span>Part {post.data.part}</span>
+      {date && <time>{date}</time>}
+    </div>
+    <h1>{post.data.title}</h1>
+    <p class="part-title">{post.data.partTitle}</p>
+    <div class="prose"><slot /></div>
+    {post.data.ithomeUrl && (
+      <p class="ithome-link"><a href={post.data.ithomeUrl}>在 iThome 閱讀同步版本</a></p>
+    )}
+    <nav class="post-nav" aria-label="文章導覽">
+      <div>
+        {previous && <a href={`${import.meta.env.BASE_URL}${dayPath(previous.data.day).slice(1)}`}>← {previous.data.title}</a>}
+      </div>
+      <div>
+        {next && <a href={`${import.meta.env.BASE_URL}${dayPath(next.data.day).slice(1)}`}>{next.data.title} →</a>}
+      </div>
+    </nav>
+  </article>
+</BaseLayout>
