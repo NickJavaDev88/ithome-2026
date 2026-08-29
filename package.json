@@ -9,15 +9,10 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "ithome:prepare": "node scripts/ithome/prepare.mjs",
-    "ithome:save-auth": "node scripts/ithome/save-storage-state.mjs",
-    "ithome:sync-draft": "node scripts/ithome/sync-draft.mjs",
-    "ithome:publish": "node scripts/ithome/publish.mjs",
-    "ithome:safe-check": "node scripts/ithome/safe-draft-check.mjs"
+    "ithome:prepare": "node scripts/ithome/prepare.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",
-    "astro": "^7.2.9",
-    "playwright": "^1.55.0"
+    "astro": "^7.2.9"
   }
 }
