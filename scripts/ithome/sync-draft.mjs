@@ -14,6 +14,7 @@ if (!Number.isInteger(day) || day < 1 || day > 30) {
 
 const payload = await prepareIthomePayload(day);
 const storageStatePath = path.resolve('.playwright/ithome-storage-state.json');
+const draftMapPath = path.resolve('.playwright/ithome-drafts.json');
 const padded = payload.dayString;
 const screenshotPath = `.playwright/sync-draft-day-${padded}.png`;
 const diagnosticsPath = `.playwright/sync-draft-day-${padded}-diagnostics.json`;
@@ -77,9 +78,7 @@ const fail = async (message) => {
   } else {
     console.error('[sync-draft] No visible controls detected.');
   }
-  if (diagnostics.dialogs.length) {
-    console.error(`[sync-draft] Dialogs: ${JSON.stringify(diagnostics.dialogs)}`);
-  }
+  if (diagnostics.dialogs.length) console.error(`[sync-draft] Dialogs: ${JSON.stringify(diagnostics.dialogs)}`);
   console.error(`[sync-draft] Diagnostics: ${diagnosticsPath}`);
   await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {});
   console.error(`[sync-draft] Screenshot: ${screenshotPath}`);
@@ -95,31 +94,39 @@ async function visibleFirst(locators) {
   return null;
 }
 
+async function saveDraftUrl(url) {
+  let map = {};
+  try {
+    map = JSON.parse(await fs.readFile(draftMapPath, 'utf8'));
+  } catch {}
+  map[padded] = {
+    day,
+    title: payload.title,
+    draftUrl: url,
+    savedAt: new Date().toISOString(),
+  };
+  await fs.mkdir(path.dirname(draftMapPath), { recursive: true });
+  await fs.writeFile(draftMapPath, `${JSON.stringify(map, null, 2)}\n`, 'utf8');
+}
+
 console.log(`[sync-draft] Day ${padded}: opening iT 邦幫忙...`);
 await page.goto('https://ithelp.ithome.com.tw/', { waitUntil: 'domcontentloaded' });
 if (page.url().includes('login')) await fail('saved session is not logged in');
 
 const ironPost = page.getByText('鐵人發文', { exact: true }).first();
-if (!(await ironPost.isVisible().catch(() => false))) {
-  await fail('cannot find 「鐵人發文」 on the logged-in page');
-}
+if (!(await ironPost.isVisible().catch(() => false))) await fail('cannot find 「鐵人發文」 on the logged-in page');
 
 console.log('[sync-draft] Clicking 「鐵人發文」 to open the series chooser...');
 await ironPost.click();
 await page.waitForTimeout(500);
 
 const chooserText = page.getByText(/選擇.*鐵人.*主題|選擇.*發文/i).first();
-if (await chooserText.isVisible().catch(() => false)) {
-  console.log('[sync-draft] Series chooser is visible.');
-} else {
-  console.log('[sync-draft] No chooser heading detected; looking for the series directly.');
-}
+if (await chooserText.isVisible().catch(() => false)) console.log('[sync-draft] Series chooser is visible.');
+else console.log('[sync-draft] No chooser heading detected; looking for the series directly.');
 
 const seriesText = 'AI 都會寫程式了，我還要學什麼？';
 const seriesCandidate = page.getByText(seriesText, { exact: false }).first();
-if (!(await seriesCandidate.isVisible().catch(() => false))) {
-  await fail('could not find the expected ironman series in the chooser');
-}
+if (!(await seriesCandidate.isVisible().catch(() => false))) await fail('could not find the expected ironman series in the chooser');
 
 console.log('[sync-draft] Selecting the expected ironman series...');
 const beforeSeriesUrl = page.url();
@@ -176,31 +183,33 @@ if (bodyTextarea) {
 }
 
 const currentTitle = await titleInput.inputValue().catch(() => '');
-if (currentTitle !== payload.title) {
-  await fail(`title verification failed; got ${JSON.stringify(currentTitle)}`);
-}
+if (currentTitle !== payload.title) await fail(`title verification failed; got ${JSON.stringify(currentTitle)}`);
 
 if (bodyTextarea) {
   const bodyValue = await bodyTextarea.inputValue().catch(() => '');
-  if (!bodyValue.includes(payload.syncLine)) {
-    await fail('body verification failed: canonical sync line is missing');
-  }
+  if (!bodyValue.includes(payload.syncLine)) await fail('body verification failed: canonical sync line is missing');
 }
 
 await page.screenshot({ path: `.playwright/sync-draft-day-${padded}-before-save.png`, fullPage: true });
 
 const saveDraft = page.getByText('儲存草稿', { exact: true }).first();
-if (!(await saveDraft.isVisible().catch(() => false))) {
-  await fail('could not locate 「儲存草稿」; nothing was submitted');
-}
+if (!(await saveDraft.isVisible().catch(() => false))) await fail('could not locate 「儲存草稿」; nothing was submitted');
 
 console.log('[sync-draft] Title/body verified. Saving as draft once...');
 await saveDraft.click();
 await page.waitForLoadState('domcontentloaded').catch(() => {});
 await page.waitForTimeout(1200);
 
+const draftUrl = page.url();
+if (!/\/articles\/\d+\/draft(?:$|[?#])/.test(draftUrl)) {
+  await fail(`draft save completed but current URL does not look like an iThome draft URL: ${draftUrl}`);
+}
+await saveDraftUrl(draftUrl);
+
 await page.screenshot({ path: screenshotPath, fullPage: true });
 console.log(`[sync-draft] DONE: Day ${padded} was submitted only as a draft.`);
+console.log(`[sync-draft] Draft URL: ${draftUrl}`);
+console.log(`[sync-draft] Local draft map: ${draftMapPath}`);
 console.log('[sync-draft] No 「發表文章」 action was performed.');
 console.log(`[sync-draft] Screenshot: ${screenshotPath}`);
 
