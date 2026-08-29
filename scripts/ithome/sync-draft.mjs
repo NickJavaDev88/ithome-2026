@@ -15,6 +15,8 @@ if (!Number.isInteger(day) || day < 1 || day > 30) {
 const payload = await prepareIthomePayload(day);
 const storageStatePath = path.resolve('.playwright/ithome-storage-state.json');
 const padded = payload.dayString;
+const screenshotPath = `.playwright/sync-draft-day-${padded}.png`;
+const diagnosticsPath = `.playwright/sync-draft-day-${padded}-diagnostics.json`;
 
 try {
   await fs.access(storageStatePath);
@@ -28,30 +30,35 @@ const browser = await chromium.launch({ headless: false });
 const context = await browser.newContext({ storageState: storageStatePath });
 const page = await context.newPage();
 
-const screenshotPath = `.playwright/sync-draft-day-${padded}.png`;
-const diagnosticsPath = `.playwright/sync-draft-day-${padded}-diagnostics.json`;
-
 async function collectDiagnostics() {
-  const controls = await page.locator('input, textarea, [contenteditable="true"], iframe').evaluateAll((elements) =>
+  const controls = await page.locator('input, textarea, [contenteditable="true"], iframe, button, a').evaluateAll((elements) =>
     elements.map((el, index) => ({
       index,
       tag: el.tagName.toLowerCase(),
       type: el.getAttribute('type'),
       name: el.getAttribute('name'),
       id: el.id || null,
+      href: el.getAttribute('href'),
       placeholder: el.getAttribute('placeholder'),
       ariaLabel: el.getAttribute('aria-label'),
+      role: el.getAttribute('role'),
       className: typeof el.className === 'string' ? el.className : null,
       contenteditable: el.getAttribute('contenteditable'),
       visible: Boolean(el.offsetWidth || el.offsetHeight || el.getClientRects().length),
       valuePreview: 'value' in el ? String(el.value ?? '').slice(0, 120) : null,
-      textPreview: String(el.textContent ?? '').trim().slice(0, 120),
+      textPreview: String(el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 180),
     })),
   ).catch(() => []);
 
   const diagnostics = {
     url: page.url(),
     title: await page.title().catch(() => ''),
+    dialogs: await page.locator('[role="dialog"], .modal, [class*="modal" i]').evaluateAll((els) =>
+      els.map((el) => ({
+        visible: Boolean(el.offsetWidth || el.offsetHeight || el.getClientRects().length),
+        textPreview: String(el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 500),
+      })),
+    ).catch(() => []),
     controls,
   };
   await fs.mkdir(path.dirname(diagnosticsPath), { recursive: true });
@@ -65,12 +72,13 @@ const fail = async (message) => {
   const diagnostics = await collectDiagnostics();
   const visibleControls = diagnostics.controls.filter((control) => control.visible);
   if (visibleControls.length) {
-    console.error('[sync-draft] Visible editable controls:');
-    for (const control of visibleControls) {
-      console.error(`  ${JSON.stringify(control)}`);
-    }
+    console.error('[sync-draft] Visible controls:');
+    for (const control of visibleControls.slice(0, 30)) console.error(`  ${JSON.stringify(control)}`);
   } else {
-    console.error('[sync-draft] No visible input/textarea/contenteditable/iframe controls detected.');
+    console.error('[sync-draft] No visible controls detected.');
+  }
+  if (diagnostics.dialogs.length) {
+    console.error(`[sync-draft] Dialogs: ${JSON.stringify(diagnostics.dialogs)}`);
   }
   console.error(`[sync-draft] Diagnostics: ${diagnosticsPath}`);
   await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {});
@@ -87,66 +95,40 @@ async function visibleFirst(locators) {
   return null;
 }
 
-async function navigateViaVisibleText(locator, label) {
-  const candidate = locator.first();
-  if (!(await candidate.isVisible().catch(() => false))) return false;
-
-  const startingUrl = page.url();
-  const targetInfo = await candidate.evaluate((el) => {
-    const anchor = el.closest('a');
-    return {
-      tag: el.tagName.toLowerCase(),
-      href: anchor?.href || null,
-      text: String(el.textContent ?? '').trim(),
-    };
-  }).catch(() => ({ tag: null, href: null, text: null }));
-
-  console.log(`[sync-draft] ${label}: ${JSON.stringify(targetInfo)}`);
-
-  const popupPromise = context.waitForEvent('page', { timeout: 1500 }).catch(() => null);
-  await candidate.click().catch(() => {});
-  const popup = await popupPromise;
-  if (popup) {
-    await popup.waitForLoadState('domcontentloaded').catch(() => {});
-    console.log(`[sync-draft] ${label} opened another page: ${popup.url()}`);
-    await popup.close().catch(() => {});
-  }
-
-  await page.waitForTimeout(700);
-  if (page.url() !== startingUrl) {
-    await page.waitForLoadState('domcontentloaded').catch(() => {});
-    console.log(`[sync-draft] ${label} navigated to: ${page.url()}`);
-    return true;
-  }
-
-  if (targetInfo.href) {
-    console.log(`[sync-draft] ${label} click did not navigate; following href directly: ${targetInfo.href}`);
-    await page.goto(targetInfo.href, { waitUntil: 'domcontentloaded' });
-    return true;
-  }
-
-  return false;
-}
-
 console.log(`[sync-draft] Day ${padded}: opening iT 邦幫忙...`);
 await page.goto('https://ithelp.ithome.com.tw/', { waitUntil: 'domcontentloaded' });
 if (page.url().includes('login')) await fail('saved session is not logged in');
 
-const ironPost = page.getByText('鐵人發文', { exact: true });
-if (!(await ironPost.first().isVisible().catch(() => false))) {
+const ironPost = page.getByText('鐵人發文', { exact: true }).first();
+if (!(await ironPost.isVisible().catch(() => false))) {
   await fail('cannot find 「鐵人發文」 on the logged-in page');
 }
-if (!(await navigateViaVisibleText(ironPost, '鐵人發文'))) {
-  await fail('found 「鐵人發文」 text but could not navigate to its destination');
+
+console.log('[sync-draft] Clicking 「鐵人發文」 to open the series chooser...');
+await ironPost.click();
+await page.waitForTimeout(500);
+
+const chooserText = page.getByText(/選擇.*鐵人.*主題|選擇.*發文/i).first();
+if (await chooserText.isVisible().catch(() => false)) {
+  console.log('[sync-draft] Series chooser is visible.');
+} else {
+  console.log('[sync-draft] No chooser heading detected; looking for the series directly.');
 }
 
 const seriesText = 'AI 都會寫程式了，我還要學什麼？';
-const seriesCandidate = page.getByText(seriesText, { exact: false });
-if (await seriesCandidate.first().isVisible().catch(() => false)) {
-  console.log('[sync-draft] Selecting the expected ironman series...');
-  await navigateViaVisibleText(seriesCandidate, 'series selector');
+const seriesCandidate = page.getByText(seriesText, { exact: false }).first();
+if (!(await seriesCandidate.isVisible().catch(() => false))) {
+  await fail('could not find the expected ironman series in the chooser');
 }
 
+console.log('[sync-draft] Selecting the expected ironman series...');
+const beforeSeriesUrl = page.url();
+await seriesCandidate.click();
+await Promise.race([
+  page.waitForURL((url) => url.toString() !== beforeSeriesUrl, { timeout: 5000 }),
+  page.waitForTimeout(1200),
+]).catch(() => {});
+await page.waitForLoadState('domcontentloaded').catch(() => {});
 console.log(`[sync-draft] Editor URL: ${page.url()}`);
 
 const titleInput = await visibleFirst([
@@ -158,7 +140,7 @@ const titleInput = await visibleFirst([
   page.getByLabel(/標題/).locator('input'),
   page.locator('label').filter({ hasText: /標題/ }).locator('input'),
 ]);
-if (!titleInput) await fail('could not locate the article title field');
+if (!titleInput) await fail('could not locate the article title field after selecting the series');
 
 const bodyTextarea = await visibleFirst([
   page.locator('textarea[name="content"]'),
@@ -198,8 +180,7 @@ if (currentTitle !== payload.title) {
   await fail(`title verification failed; got ${JSON.stringify(currentTitle)}`);
 }
 
-const pageText = await page.locator('body').innerText().catch(() => '');
-if (!pageText.includes(payload.syncLine) && bodyTextarea) {
+if (bodyTextarea) {
   const bodyValue = await bodyTextarea.inputValue().catch(() => '');
   if (!bodyValue.includes(payload.syncLine)) {
     await fail('body verification failed: canonical sync line is missing');
