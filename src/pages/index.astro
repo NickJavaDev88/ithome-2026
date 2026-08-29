@@ -1,0 +1,43 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { dayPath, getPublishedPosts } from '../lib/posts';
+
+const posts = await getPublishedPosts();
+const parts = Map.groupBy(posts, (post) => post.data.part);
+---
+<BaseLayout>
+  <section class="hero">
+    <p class="eyebrow">2026 iThome 鐵人賽 · Software Development</p>
+    <h1>AI 都會寫程式了，我還要學什麼？</h1>
+    <p class="lead">從「做得出來」到學會開發的 30 天</p>
+    <p class="summary">一個仍在學習中的開發新手，記錄自己如何從 AI 協助實作，一路摸索產品需求、工程邊界與 Coding 能力。</p>
+  </section>
+
+  <section class="series">
+    <div class="series-heading">
+      <h2>30 天連載</h2>
+      <span>{posts.length} / 30</span>
+    </div>
+
+    {posts.length === 0 ? (
+      <p class="empty">連載尚未開始。文章會依排程逐日公開。</p>
+    ) : (
+      [...parts.entries()].map(([part, partPosts]) => (
+        <section class="part-block">
+          <p class="part-kicker">Part {part}</p>
+          <h3>{partPosts[0].data.partTitle}</h3>
+          <ol class="post-list">
+            {partPosts.map((post) => (
+              <li>
+                <a href={`${import.meta.env.BASE_URL}${dayPath(post.data.day).slice(1)}`}>
+                  <span class="day">Day {String(post.data.day).padStart(2, '0')}</span>
+                  <span>{post.data.title.replace(/^Day\s*\d+｜/, '')}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))
+    )}
+  </section>
+</BaseLayout>
