@@ -1,6 +1,6 @@
 ---
 import BaseLayout from './BaseLayout.astro';
-import { dayPath, type Post } from '../lib/posts';
+import { dayPath, getAllPosts, isPublished, type Post } from '../lib/posts';
 
 interface Props {
   post: Post;
@@ -9,28 +9,107 @@ interface Props {
 }
 
 const { post, previous, next } = Astro.props;
-const date = post.data.publishDate?.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
+const date = post.data.publishDate?.toLocaleDateString('zh-TW', {
+  timeZone: 'Asia/Taipei',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+const allPosts = await getAllPosts();
+const parts = Map.groupBy(allPosts, (item) => item.data.part);
+const base = import.meta.env.BASE_URL;
 ---
 <BaseLayout title={post.data.title} description={post.data.description ?? post.data.title}>
-  <article class="article-shell">
-    <div class="article-meta">
-      <span>Day {String(post.data.day).padStart(2, '0')}</span>
-      <span>Part {post.data.part}</span>
-      {date && <time>{date}</time>}
-    </div>
-    <h1>{post.data.title}</h1>
-    <p class="part-title">{post.data.partTitle}</p>
-    <div class="prose"><slot /></div>
-    {post.data.ithomeUrl && (
-      <p class="ithome-link"><a href={post.data.ithomeUrl}>在 iThome 閱讀同步版本</a></p>
-    )}
-    <nav class="post-nav" aria-label="文章導覽">
-      <div>
-        {previous && <a href={`${import.meta.env.BASE_URL}${dayPath(previous.data.day).slice(1)}`}>← {previous.data.title}</a>}
+  <div class="reader-layout">
+    <aside class="series-sidebar">
+      <a class="sidebar-brand" href={base}>
+        <span class="code-mark">&lt;/&gt;</span>
+        <span>
+          <strong>AI 都會寫程式了，<br />我還要學什麼？</strong>
+          <small>從「做得出來」到學會開發的 30 天</small>
+        </span>
+      </a>
+
+      <div class="sidebar-heading">
+        <h2>系列導覽</h2>
+        <p>30 天從學習起點，一路整理產品、工程與 AI 協作。</p>
       </div>
-      <div>
-        {next && <a href={`${import.meta.env.BASE_URL}${dayPath(next.data.day).slice(1)}`}>{next.data.title} →</a>}
+
+      <nav class="series-tree" aria-label="30 天系列文章">
+        {[...parts.entries()].map(([part, items]) => (
+          <section class="sidebar-part">
+            <h3>Part {part} <span>｜</span> {items[0].data.partTitle}</h3>
+            <ol>
+              {items.map((item) => {
+                const published = isPublished(item);
+                const active = item.data.day === post.data.day;
+                const label = item.data.title.replace(/^Day\s*\d+｜/, '');
+                return (
+                  <li class:list={[{ active, locked: !published && !active }]}>
+                    {published || active ? (
+                      <a href={`${base}${dayPath(item.data.day).slice(1)}`} aria-current={active ? 'page' : undefined}>
+                        <span class="timeline-dot" aria-hidden="true"></span>
+                        <span class="day-chip">Day {String(item.data.day).padStart(2, '0')}</span>
+                        <span class="sidebar-title">{label}</span>
+                        {item.data.publishDate && <time>{item.data.publishDate.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}</time>}
+                      </a>
+                    ) : (
+                      <div class="locked-row">
+                        <span class="timeline-dot" aria-hidden="true"></span>
+                        <span class="day-chip">Day {String(item.data.day).padStart(2, '0')}</span>
+                        <span class="sidebar-title">{label}</span>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))}
+      </nav>
+
+      <a class="back-home" href={base}>← 回到系列首頁</a>
+    </aside>
+
+    <main class="reading-pane">
+      <div class="reading-topbar">
+        <a href={base}>← 回到系列總覽</a>
       </div>
-    </nav>
-  </article>
+
+      <article class="article-shell">
+        <div class="article-meta">
+          <span class="article-day">Day {String(post.data.day).padStart(2, '0')}</span>
+          <span>Part {post.data.part}</span>
+          {date && <time>{date}</time>}
+        </div>
+        <h1>{post.data.title.replace(/^Day\s*\d+｜/, '')}</h1>
+        <p class="part-title">{post.data.partTitle}</p>
+
+        <div class="prose"><slot /></div>
+
+        {post.data.ithomeUrl && (
+          <p class="ithome-link"><a href={post.data.ithomeUrl}>在 iThome 閱讀同步版本 ↗</a></p>
+        )}
+
+        <nav class="post-nav" aria-label="文章導覽">
+          <div>
+            {previous && (
+              <a href={`${base}${dayPath(previous.data.day).slice(1)}`}>
+                <small>← 上一篇</small>
+                <strong>{previous.data.title.replace(/^Day\s*\d+｜/, '')}</strong>
+              </a>
+            )}
+          </div>
+          <div>
+            {next && (
+              <a href={`${base}${dayPath(next.data.day).slice(1)}`}>
+                <small>下一篇 →</small>
+                <strong>{next.data.title.replace(/^Day\s*\d+｜/, '')}</strong>
+              </a>
+            )}
+          </div>
+        </nav>
+      </article>
+    </main>
+  </div>
 </BaseLayout>
