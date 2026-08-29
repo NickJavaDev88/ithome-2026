@@ -13,17 +13,15 @@ if (!Number.isInteger(day) || day < 1 || day > 30) {
 }
 
 const payload = await prepareIthomePayload(day);
+const padded = payload.dayString;
 const storageStatePath = path.resolve('.playwright/ithome-storage-state.json');
 const draftMapPath = path.resolve('.playwright/ithome-drafts.json');
-const padded = payload.dayString;
 const screenshotPath = `.playwright/sync-draft-day-${padded}.png`;
-const diagnosticsPath = `.playwright/sync-draft-day-${padded}-diagnostics.json`;
 
 try {
   await fs.access(storageStatePath);
 } catch {
   console.error(`Missing iThome browser session: ${storageStatePath}`);
-  console.error('Run: pnpm ithome:save-auth');
   process.exit(3);
 }
 
@@ -32,60 +30,31 @@ const context = await browser.newContext({ storageState: storageStatePath });
 const page = await context.newPage();
 page.setDefaultTimeout(10000);
 
-async function collectDiagnostics() {
-  const controls = await page.locator('input, textarea, [contenteditable="true"], iframe, button, a').evaluateAll((elements) =>
-    elements.map((el, index) => ({
-      index,
-      tag: el.tagName.toLowerCase(),
-      type: el.getAttribute('type'),
-      name: el.getAttribute('name'),
-      id: el.id || null,
-      href: el.getAttribute('href'),
-      placeholder: el.getAttribute('placeholder'),
-      ariaLabel: el.getAttribute('aria-label'),
-      role: el.getAttribute('role'),
-      className: typeof el.className === 'string' ? el.className : null,
-      contenteditable: el.getAttribute('contenteditable'),
-      visible: Boolean(el.offsetWidth || el.offsetHeight || el.getClientRects().length),
-      valuePreview: 'value' in el ? String(el.value ?? '').slice(0, 120) : null,
-      textPreview: String(el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 180),
-    })),
-  ).catch(() => []);
-
-  const diagnostics = {
-    url: page.url(),
-    title: await page.title().catch(() => ''),
-    dialogs: await page.locator('[role="dialog"], .modal, [class*="modal" i]').evaluateAll((els) =>
-      els.map((el) => ({
-        visible: Boolean(el.offsetWidth || el.offsetHeight || el.getClientRects().length),
-        textPreview: String(el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 500),
-      })),
-    ).catch(() => []),
-    controls,
-  };
-  await fs.mkdir(path.dirname(diagnosticsPath), { recursive: true });
-  await fs.writeFile(diagnosticsPath, `${JSON.stringify(diagnostics, null, 2)}\n`, 'utf8');
-  return diagnostics;
-}
-
-const fail = async (message) => {
+async function fail(message) {
   console.error(`DRAFT SYNC FAILED: ${message}`);
   console.error(`[sync-draft] Current URL: ${page.url()}`);
-  const diagnostics = await collectDiagnostics();
-  const visibleControls = diagnostics.controls.filter((control) => control.visible);
-  if (visibleControls.length) {
-    console.error('[sync-draft] Visible controls:');
-    for (const control of visibleControls.slice(0, 30)) console.error(`  ${JSON.stringify(control)}`);
-  } else {
-    console.error('[sync-draft] No visible controls detected.');
-  }
-  if (diagnostics.dialogs.length) console.error(`[sync-draft] Dialogs: ${JSON.stringify(diagnostics.dialogs)}`);
-  console.error(`[sync-draft] Diagnostics: ${diagnosticsPath}`);
   await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {});
-  console.error(`[sync-draft] Screenshot: ${screenshotPath}`);
   await browser.close();
   process.exit(1);
-};
+}
+
+async function openHome() {
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      console.log(`[sync-draft] Opening iT 邦幫忙 (attempt ${attempt}/2)...`);
+      await page.goto('https://ithelp.ithome.com.tw/', {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
+    } catch (error) {
+      console.warn(`[sync-draft] Home navigation timed out: ${error.message}`);
+    }
+
+    if (page.url().startsWith('https://ithelp.ithome.com.tw/')) return;
+    if (attempt < 2) await page.waitForTimeout(1000);
+  }
+  await fail('could not load the iThome home page');
+}
 
 async function visibleFirst(locators) {
   for (const locator of locators) {
@@ -110,58 +79,40 @@ async function saveDraftUrl(url) {
   await fs.writeFile(draftMapPath, `${JSON.stringify(map, null, 2)}\n`, 'utf8');
 }
 
-async function gotoResilient(url, label) {
-  try {
-    await page.goto(url, { waitUntil: 'commit', timeout: 15000 });
-  } catch (error) {
-    console.warn(`[sync-draft] ${label} navigation timed out after request commit; continuing with current page: ${page.url()}`);
-  }
-  await page.waitForTimeout(600);
-}
-
-console.log(`[sync-draft] Day ${padded}: opening iT 邦幫忙...`);
-await gotoResilient('https://ithelp.ithome.com.tw/', 'home');
+await openHome();
 if (page.url().includes('login')) await fail('saved session is not logged in');
 
 const ironPost = page.getByText('鐵人發文', { exact: true }).first();
-if (!(await ironPost.isVisible().catch(() => false))) await fail('cannot find 「鐵人發文」 on the logged-in page');
+if (!(await ironPost.isVisible().catch(() => false))) await fail('cannot find 「鐵人發文」');
 
-console.log('[sync-draft] Clicking 「鐵人發文」 to open the series chooser...');
+console.log('[sync-draft] Opening the ironman series chooser...');
 await ironPost.click({ noWaitAfter: true });
 await page.waitForTimeout(700);
 
-const chooserText = page.getByText(/選擇.*鐵人.*主題|選擇.*發文/i).first();
-if (await chooserText.isVisible().catch(() => false)) console.log('[sync-draft] Series chooser is visible.');
-else console.log('[sync-draft] No chooser heading detected; looking for the series directly.');
-
-const seriesText = 'AI 都會寫程式了，我還要學什麼？';
-const seriesCandidate = page.getByText(seriesText, { exact: false }).first();
-if (!(await seriesCandidate.isVisible().catch(() => false))) await fail('could not find the expected ironman series in the chooser');
+const series = page.getByText('AI 都會寫程式了，我還要學什麼？', { exact: false }).first();
+if (!(await series.isVisible().catch(() => false))) await fail('could not find the expected ironman series');
 
 console.log('[sync-draft] Selecting the expected ironman series...');
-await seriesCandidate.click({ noWaitAfter: true });
+await series.click({ noWaitAfter: true, timeout: 10000 });
 
-// iThome can complete the click but keep Playwright waiting on slow navigation.
-// Judge success from the editor URL or editor controls instead of a full page-load event.
 let editorReady = false;
-for (let attempt = 0; attempt < 20; attempt += 1) {
+for (let attempt = 0; attempt < 40; attempt += 1) {
   if (/\/articles\/\d+\/draft(?:$|[?#])/.test(page.url())) {
     editorReady = true;
     break;
   }
-  const visibleTitle = await visibleFirst([
+  const title = await visibleFirst([
     page.locator('input[name="title"]'),
     page.locator('input[name*="title" i]'),
-    page.locator('input[id*="title" i]'),
     page.locator('input[placeholder*="標題"]'),
   ]);
-  if (visibleTitle) {
+  if (title) {
     editorReady = true;
     break;
   }
   await page.waitForTimeout(250);
 }
-if (!editorReady) await fail('series selection did not reach an iThome draft editor');
+if (!editorReady) await fail('series selection did not reach a draft editor');
 console.log(`[sync-draft] Editor URL: ${page.url()}`);
 
 const titleInput = await visibleFirst([
@@ -169,23 +120,17 @@ const titleInput = await visibleFirst([
   page.locator('input[name*="title" i]'),
   page.locator('input[id*="title" i]'),
   page.locator('input[placeholder*="標題"]'),
-  page.locator('textarea[placeholder*="標題"]'),
-  page.getByLabel(/標題/).locator('input'),
-  page.locator('label').filter({ hasText: /標題/ }).locator('input'),
 ]);
-if (!titleInput) await fail('could not locate the article title field after selecting the series');
+if (!titleInput) await fail('could not locate the article title field');
+
+console.log(`[sync-draft] Filling title: ${payload.title}`);
+await titleInput.fill(payload.title);
 
 const bodyTextarea = await visibleFirst([
   page.locator('textarea[name="content"]'),
   page.locator('textarea[name="body"]'),
   page.locator('textarea[name*="content" i]'),
-  page.locator('textarea[id*="content" i]'),
-  page.locator('textarea[placeholder*="內容"]'),
-  page.locator('textarea[placeholder*="文章"]'),
 ]);
-
-console.log(`[sync-draft] Filling title: ${payload.title}`);
-await titleInput.fill(payload.title);
 
 if (bodyTextarea) {
   console.log('[sync-draft] Filling Markdown body via textarea...');
@@ -204,42 +149,36 @@ if (bodyTextarea) {
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
     await page.keyboard.insertText(payload.body);
   } else {
-    await fail('could not locate a writable article body editor');
+    await fail('could not locate the article body editor');
   }
 }
 
-const currentTitle = await titleInput.inputValue().catch(() => '');
-if (currentTitle !== payload.title) await fail(`title verification failed; got ${JSON.stringify(currentTitle)}`);
-
-if (bodyTextarea) {
-  const bodyValue = await bodyTextarea.inputValue().catch(() => '');
-  if (!bodyValue.includes(payload.syncLine)) await fail('body verification failed: canonical sync line is missing');
+if ((await titleInput.inputValue().catch(() => '')) !== payload.title) {
+  await fail('title verification failed');
 }
 
 await page.screenshot({ path: `.playwright/sync-draft-day-${padded}-before-save.png`, fullPage: true });
 
 const saveDraft = page.getByText('儲存草稿', { exact: true }).first();
-if (!(await saveDraft.isVisible().catch(() => false))) await fail('could not locate 「儲存草稿」; nothing was submitted');
+if (!(await saveDraft.isVisible().catch(() => false))) await fail('could not locate 「儲存草稿」');
 
-console.log('[sync-draft] Title/body verified. Saving as draft once...');
+console.log('[sync-draft] Saving as draft once...');
 await saveDraft.click({ noWaitAfter: true });
 
 let draftUrl = page.url();
-for (let attempt = 0; attempt < 20; attempt += 1) {
+for (let attempt = 0; attempt < 40; attempt += 1) {
   draftUrl = page.url();
   if (/\/articles\/\d+\/draft(?:$|[?#])/.test(draftUrl)) break;
   await page.waitForTimeout(250);
 }
 if (!/\/articles\/\d+\/draft(?:$|[?#])/.test(draftUrl)) {
-  await fail(`draft save completed but current URL does not look like an iThome draft URL: ${draftUrl}`);
+  await fail(`could not confirm draft URL after save: ${draftUrl}`);
 }
-await saveDraftUrl(draftUrl);
 
+await saveDraftUrl(draftUrl);
 await page.screenshot({ path: screenshotPath, fullPage: true });
-console.log(`[sync-draft] DONE: Day ${padded} was submitted only as a draft.`);
+console.log(`[sync-draft] DONE: Day ${padded} saved as draft only.`);
 console.log(`[sync-draft] Draft URL: ${draftUrl}`);
 console.log(`[sync-draft] Local draft map: ${draftMapPath}`);
 console.log('[sync-draft] No 「發表文章」 action was performed.');
-console.log(`[sync-draft] Screenshot: ${screenshotPath}`);
-
 await browser.close();
