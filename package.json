@@ -7,10 +7,15 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "ithome:prepare": "node scripts/ithome/prepare.mjs",
+    "ithome:publish": "node scripts/ithome/publish.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",
     "astro": "^7.2.9"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.0"
   }
 }
