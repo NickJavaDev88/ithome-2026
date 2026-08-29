@@ -18,6 +18,12 @@ const date = post.data.publishDate?.toLocaleDateString('zh-TW', {
 const allPosts = await getAllPosts();
 const parts = Map.groupBy(allPosts, (item) => item.data.part);
 const base = import.meta.env.BASE_URL;
+const shortTitle = post.data.title.replace(/^Day\s*\d+｜/, '');
+const lastRead = {
+  day: post.data.day,
+  title: shortTitle,
+  href: `${base}${dayPath(post.data.day).slice(1)}`,
+};
 ---
 <BaseLayout title={post.data.title} description={post.data.description ?? post.data.title}>
   <div class="reader-layout">
@@ -68,12 +74,12 @@ const base = import.meta.env.BASE_URL;
         ))}
       </nav>
 
-      <a class="back-home" href={base}>← 回到系列首頁</a>
+      <a class="back-home" href={base}>← 回到系列導覽</a>
     </aside>
 
     <main class="reading-pane">
       <div class="reading-topbar">
-        <a href={base}>← 回到系列總覽</a>
+        <a href={base}>← 回到系列導覽</a>
       </div>
 
       <article class="article-shell">
@@ -82,7 +88,7 @@ const base = import.meta.env.BASE_URL;
           <span>Part {post.data.part}</span>
           {date && <time>{date}</time>}
         </div>
-        <h1>{post.data.title.replace(/^Day\s*\d+｜/, '')}</h1>
+        <h1>{shortTitle}</h1>
         <p class="part-title">{post.data.partTitle}</p>
 
         <div class="prose"><slot /></div>
@@ -112,4 +118,10 @@ const base = import.meta.env.BASE_URL;
       </article>
     </main>
   </div>
+
+  <script is:inline define:vars={{ lastRead }}>
+    try {
+      localStorage.setItem('ithome-2026:last-read', JSON.stringify(lastRead));
+    } catch (_) {}
+  </script>
 </BaseLayout>
