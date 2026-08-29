@@ -1,0 +1,38 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'AI 都會寫程式了，我還要學什麼？',
+  description = '從「做得出來」到學會開發的 30 天',
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="application/rss+xml" title="RSS" href={new URL('rss.xml', Astro.site)} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href={import.meta.env.BASE_URL}>AI 都會寫程式了，我還要學什麼？</a>
+      <span>2026 iThome 鐵人賽連載</span>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <span>30 天連載 · Markdown / Astro / GitHub Pages</span>
+    </footer>
+  </body>
+</html>
