@@ -32,6 +32,7 @@ Read only what the selected mode needs:
 - Before any iThome UI action, read [references/ui-workflows.md](references/ui-workflows.md) and load the installed `computer-use` skill.
 - When emitting machine-readable results, read [references/event-contract.md](references/event-contract.md).
 - When integrating the Hermes notification consumer, read [references/hermes-watcher.md](references/hermes-watcher.md). This does not authorize installing a schedule, restarting Hermes, or sending Telegram.
+- When evaluating unattended publishing, read [references/unattended-runner.md](references/unattended-runner.md). The Codex／Computer Use publish mode remains confirmation-gated.
 
 ## Common workflow
 
@@ -46,6 +47,8 @@ Read only what the selected mode needs:
 ## Authorization boundary
 
 Import and repair may save drafts when explicitly requested. Publishing is representational communication: prepare everything, then request confirmation immediately before the one allowed publish click. A schedule or `--day` value does not remove this action-time confirmation.
+
+Repository instructions cannot weaken Codex or Computer Use platform policy. Do not describe `publish-day` as unattended or use a prompt, schedule, environment variable, or wrapper to suppress its required action-time confirmation. Unattended publishing, when separately authorized and accepted, belongs to an independent local runner outside Computer Use; that runner owns its local iThome session and emits the same minimal event contract. Hermes remains a read-only event consumer and never receives iThome credentials.
 
 Never delete a draft, overwrite a conflicting draft, modify a public article, bypass anti-automation controls, acquire Telegram credentials, or operate Hermes.
 

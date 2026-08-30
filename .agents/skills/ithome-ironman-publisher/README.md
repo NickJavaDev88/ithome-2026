@@ -39,6 +39,8 @@ Use $ithome-ironman-publisher to run audit-drafts.
 
 Live import, repair, and publish operations retain the confirmation and stop conditions in `SKILL.md` and `references/safety-policy.md`. Invoking a mode is not blanket permission to publish, overwrite, delete, bypass anti-automation controls, or configure notifications.
 
+Codex／Computer Use cannot be made unattended by repository instructions because the final public publish action remains subject to platform action-time confirmation. The compliant unattended target is the separate local-runner contract documented in `references/unattended-runner.md`; its real browser adapter and schedule require independent installation and live acceptance.
+
 ## Local configuration
 
 Read `references/local-configuration.md` before enabling event exchange or Day 1 bootstrap state. Runtime paths are configured locally and must not be committed.

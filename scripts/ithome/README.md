@@ -8,7 +8,8 @@
 - iThome 專用第一行會在輸出 payload 時動態加入，不寫回原始 Markdown。
 - 產生的第一行使用明確 Markdown 連結：`本文同步刊載於[個人連載網站](<canonicalUrl>)`。
 - GitHub Pages 文章網址固定由 Day 編號推導，例如 Day 5 對應 `https://gcake119.github.io/ithome-2026/day/05/`。
-- 瀏覽器操作、登入狀態與正式發文交給外部 Computer Use agent（例如 Codex）處理。
+- Codex／Computer Use 可處理人工確認的發文與異常復原；平台要求的正式發文 action-time confirmation 不能由 repo 規則取消。
+- 無人值守發布的目標路徑是獨立本機 runner 與本機 browser adapter，不透過 Computer Use，也不把 iThome credential 交給 Hermes。
 - Repo 不保存 iThome Cookie、session、browser state 或其他登入憑證。
 
 ## 指令
@@ -29,11 +30,11 @@ src/content/posts/day-NN.md
         ↓
 pnpm ithome:prepare -- --day N --json
         ↓
-Computer Use agent
+Codex／Computer Use（人工確認）或獨立本機 runner（目標）
         ↓
 iThome 草稿 / 發表
         ↓
 Hermes watchdog 驗證公開頁
 ```
 
-Computer Use agent 應完全使用 payload 的標題與正文，不自行改寫文章內容。
+兩種發布路徑都應完全使用 payload 的標題與正文，不自行改寫文章內容。獨立 runner 尚待真實 browser adapter 與開賽驗收，不能視為目前已啟用。
