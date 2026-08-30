@@ -1,7 +1,10 @@
 import { defineConfig } from 'astro/config';
+import { loadProjectConfigSync } from './scripts/ithome/config.mjs';
+
+const project = loadProjectConfigSync();
 
 export default defineConfig({
-  site: 'https://gcake119.github.io',
-  base: '/ithome-2026',
+  site: project.githubPages.site,
+  base: project.githubPages.base,
   trailingSlash: 'always',
 });

@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadProjectConfig } from './config.mjs';
 
-const SITE_URL = 'https://gcake119.github.io/ithome-2026';
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const POSTS_DIR = path.join(REPO_ROOT, 'src/content/posts');
 
@@ -44,6 +44,7 @@ function parseScalarFrontmatter(frontmatter) {
 }
 
 export async function prepareIthomePayload(day) {
+  const project = await loadProjectConfig({ requireInitialized: true });
   const dayString = String(day).padStart(2, '0');
   const filename = `day-${dayString}.md`;
   const sourcePath = path.join(POSTS_DIR, filename);
@@ -58,7 +59,12 @@ export async function prepareIthomePayload(day) {
   if (!meta.title) throw new Error(`${filename}: title is required.`);
   if (!body.trim()) throw new Error(`${filename}: body is empty.`);
 
-  const canonicalUrl = `${SITE_URL}/day/${dayString}/`;
+  const expectedDate = project.schedule.find((item) => item.day === day)?.date;
+  if (!expectedDate) throw new Error(`${filename}: Day ${day} is missing from the explicit schedule.`);
+  if (meta.publishDate !== expectedDate) {
+    throw new Error(`${filename}: publishDate=${meta.publishDate ?? '(missing)'} does not match configured date ${expectedDate}.`);
+  }
+  const canonicalUrl = `${project.githubPages.publicUrl}/day/${dayString}/`;
   const syncLine = `本文同步刊載於[個人連載網站](${canonicalUrl})`;
   const ithomeBody = `${syncLine}\n\n${body.trim()}\n`;
 

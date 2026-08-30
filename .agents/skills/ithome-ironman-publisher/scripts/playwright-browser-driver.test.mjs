@@ -30,7 +30,7 @@ const config = {
 describe('Playwright iThome browser driver', () => {
   test('normalizes whitespace around server-rendered draft hrefs', () => {
     expect(matchDraftEntries([{
-      href: '\n https://ithelp.ithome.com.tw/articles/12345678/draft \n',
+      href: '\n https://ithelp.ithome.com.tw/articles/example-draft/draft \n',
       title: 'Day 1｜做得出來，卻完全改不動',
       text: '草稿\nDay 1｜做得出來，卻完全改不動',
     }], 'Day 1｜做得出來，卻完全改不動')).toHaveLength(1);
@@ -84,7 +84,7 @@ describe('Playwright iThome browser driver', () => {
     const driver = createPlaywrightIthomeDriver({ chromiumImpl: fakeChromium(page), config });
     await driver.connect();
 
-    const draft = await driver.inspectDraft({ draft: { url: 'https://ithelp.ithome.com.tw/articles/123/draft' } });
+    const draft = await driver.inspectDraft({ draft: { url: 'https://ithelp.ithome.com.tw/articles/example-draft/draft' } });
 
     expect(draft).toMatchObject({
       title: 'Day 1 title',

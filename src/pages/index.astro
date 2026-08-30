@@ -1,32 +1,28 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { dayPath, getAllPosts, isPublished } from '../lib/posts';
+import { loadProjectConfigSync } from '../../scripts/ithome/config.mjs';
 
 const allPosts = await getAllPosts();
 const parts = Map.groupBy(allPosts, (item) => item.data.part);
 const base = import.meta.env.BASE_URL;
-const partSummaries = [
-  ['AI 都會寫程式了，我到底在學什麼？', '從「做得出來」卻改不動的起點，整理 AI 讓實作跑在理解前面之後，學習開發這件事發生了什麼變化。'],
-  ['產品上，我開始學「黏哪裡」', '從真實工作開始，看功能怎麼從觀察與許願長出來，以及新的資訊工具到底應該補在哪些流程斷點。'],
-  ['工程上，我開始學「邊界在哪裡」', '回頭看那些一開始能運作、需求增加後卻逐漸撐不住的方案，理解什麼時候需要重新分配系統責任。'],
-  ['把這些能力帶進真實委託案', '把需求理解、工作流程與工程抽象帶到另一個真實工作現場，繼續處理角色、狀態、例外與系統可靠性。'],
-  ['三條能力線重新合流', '重新整理產品、工程、Coding 與 AI 協作之間的關係，回到「AI 都會寫程式了，我還要學什麼？」這個問題。'],
-];
+const project = loadProjectConfigSync();
+const storageKey = `${project.seriesKey}:last-read`;
 ---
-<BaseLayout title="AI 都會寫程式了，我還要學什麼？">
+<BaseLayout title={project.seriesTitle}>
   <div class="reader-layout">
     <aside class="series-sidebar">
       <a class="sidebar-brand" href={base} aria-current="page">
         <span class="code-mark">&lt;/&gt;</span>
         <span>
-          <strong>AI 都會寫程式了，<br />我還要學什麼？</strong>
-          <small>從「做得出來」到學會開發的 30 天</small>
+          <strong>{project.seriesTitle}</strong>
+          <small>iThome 鐵人賽 30 天連載</small>
         </span>
       </a>
 
       <div class="sidebar-heading">
         <h2><a href={base} aria-current="page">系列導覽</a></h2>
-        <p>30 天從學習起點，一路整理產品、工程與 AI 協作。</p>
+        <p>Day 1～30 文章導覽。</p>
       </div>
 
       <nav class="series-tree" aria-label="30 天系列文章">
@@ -64,10 +60,10 @@ const partSummaries = [
 
     <main class="reading-pane guide-pane">
       <article class="series-guide">
-        <p class="guide-kicker">2026 iThome 鐵人賽 · Software Development</p>
-        <h1>AI 都會寫程式了，<br />我還要學什麼？</h1>
-        <p class="guide-lead">從「做得出來」到學會開發的 30 天</p>
-        <p class="guide-summary">這是一個仍在接受開發訓練、但已經利用 AI Coding Agent 實際參與產品與委託專案的新手，整理自己如何從無法修改 AI 生成的程式碼，逐漸開始理解需求、系統邊界與軟體工程的 30 天連載。</p>
+        <p class="guide-kicker">iThome 鐵人賽 · 30 天系列</p>
+        <h1>{project.seriesTitle}</h1>
+        <p class="guide-lead">Day 1～30 系列文章</p>
+        <p class="guide-summary">此網站內容由 repo 內的 Markdown 文章產生，並與 iThome 發布流程共用同一份文章來源。</p>
 
         <a id="resume-reading" class="resume-reading" href="#" hidden>
           <span class="resume-label">繼續上次閱讀</span>
@@ -76,35 +72,17 @@ const partSummaries = [
           <span class="resume-arrow">繼續閱讀 →</span>
         </a>
 
-        <section class="guide-principles" aria-label="系列核心">
-          <div>
-            <span>產品</span>
-            <strong>我在學「黏哪裡」</strong>
-            <p>資訊工具應該介入原本工作的哪個位置？哪些成熟工具值得保留？真正需要解決的斷點又在哪裡？</p>
-          </div>
-          <div>
-            <span>工程</span>
-            <strong>我在學「邊界在哪裡」</strong>
-            <p>一個現在可以運作的做法，在需求增加後還適不適合？哪些訊號代表原本的解法開始撐不住？</p>
-          </div>
-          <div>
-            <span>AI × Coding</span>
-            <strong>讓實作與學習一起加速</strong>
-            <p>Coding 能力逐漸變成閱讀、描述、Debug、驗證，以及更具體地和 Coding Agent 討論問題的能力。</p>
-          </div>
-        </section>
-
         <section class="guide-parts">
           <div class="guide-section-heading">
             <span>30 DAYS</span>
             <h2>這 30 天會怎麼走</h2>
           </div>
-          {partSummaries.map(([title, summary], index) => (
+          {[...parts.entries()].map(([part, items]) => (
             <div class="guide-part-row">
-              <span class="guide-part-number">Part {index + 1}</span>
+              <span class="guide-part-number">Part {part}</span>
               <div>
-                <h3>{title}</h3>
-                <p>{summary}</p>
+                <h3>{items[0].data.partTitle}</h3>
+                <p>包含 {items.length} 篇文章。</p>
               </div>
             </div>
           ))}
@@ -113,9 +91,9 @@ const partSummaries = [
     </main>
   </div>
 
-  <script is:inline>
+  <script is:inline define:vars={{ storageKey }}>
     try {
-      const saved = JSON.parse(localStorage.getItem('ithome-2026:last-read') || 'null');
+      const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
       if (saved && saved.href && saved.title && saved.day) {
         const card = document.getElementById('resume-reading');
         const title = document.getElementById('resume-title');

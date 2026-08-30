@@ -21,7 +21,7 @@ The repository is the article source of truth. The skill does not use an iThome 
 
 ## Requirements
 
-- A clone of `gcake119/ithome-2026`.
+- A clone or fork of this template, with `ithome.config.json` initialized.
 - Node.js and the pnpm version declared by the repository.
 - Codex with the project-local `.agents/skills/` convention and Computer Use support.
 - A user-controlled browser session already logged in to the intended iThome account for live UI modes.

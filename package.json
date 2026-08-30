@@ -10,6 +10,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "test:ithome": "vitest run scripts/ithome/*.test.mjs .agents/skills/ithome-ironman-publisher/scripts/*.test.mjs",
+    "ithome:setup": "node scripts/ithome/setup.mjs",
     "ithome:prepare": "node scripts/ithome/prepare.mjs",
     "ithome:publish-local": "node .agents/skills/ithome-ironman-publisher/scripts/run-browser-publisher.mjs"
   },

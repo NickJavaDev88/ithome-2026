@@ -45,8 +45,8 @@ Required shape:
 {
   "schemaVersion": 1,
   "source": "codex-ithome-ironman-publisher",
-  "repository": "gcake119/ithome-2026",
-  "contest": "18th-ironman-2026",
+  "repository": "<github-owner>/<github-repo>",
+  "contest": "<configured-contest-identifier>",
   "bootstrapDay": 1,
   "status": "verified",
   "articleUrl": "https://ithelp.ithome.com.tw/articles/...",

@@ -3,6 +3,9 @@
 import { constants, chmodSync, closeSync, fsyncSync, linkSync, lstatSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { loadProjectConfigSync } from "../../../../scripts/ithome/config.mjs";
+
+const project = loadProjectConfigSync();
 
 function fail(message) { process.stderr.write(`${message}\n`); process.exit(1); }
 function validTimestamp(value) { return typeof value === "string" && !Number.isNaN(Date.parse(value)); }
@@ -33,8 +36,8 @@ function validate(event) {
   if (event?.schemaVersion !== 1) errors.push("schemaVersion");
   if (typeof event?.eventId !== "string" || event.eventId.length < 8) errors.push("eventId");
   if (event?.source !== "codex-ithome-ironman-publisher") errors.push("source");
-  if (event?.repository !== "gcake119/ithome-2026") errors.push("repository");
-  if (event?.series !== "ithome-2026") errors.push("series");
+  if (event?.repository !== project.repository) errors.push("repository");
+  if (event?.series !== project.seriesKey) errors.push("series");
   if (!validTimestamp(event?.completedAt)) errors.push("completedAt");
   if (typeof event?.runId !== "string" || !event.runId) errors.push("runId");
 

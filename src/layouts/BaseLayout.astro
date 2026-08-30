@@ -1,15 +1,14 @@
 ---
 import '../styles/global.css';
+import { loadProjectConfigSync } from '../../scripts/ithome/config.mjs';
 
 interface Props {
   title?: string;
   description?: string;
 }
 
-const {
-  title = 'AI 都會寫程式了，我還要學什麼？',
-  description = '從「做得出來」到學會開發的 30 天',
-} = Astro.props;
+const project = loadProjectConfigSync();
+const { title = project.seriesTitle, description = `${project.seriesTitle}：30 天系列文章` } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const rssUrl = new URL(`${import.meta.env.BASE_URL}rss.xml`, Astro.site);
 ---
@@ -26,8 +25,8 @@ const rssUrl = new URL(`${import.meta.env.BASE_URL}rss.xml`, Astro.site);
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href={import.meta.env.BASE_URL}>AI 都會寫程式了，我還要學什麼？</a>
-      <span>2026 iThome 鐵人賽連載</span>
+      <a class="brand" href={import.meta.env.BASE_URL}>{project.seriesTitle}</a>
+      <span>iThome 鐵人賽 30 天連載</span>
     </header>
     <main>
       <slot />

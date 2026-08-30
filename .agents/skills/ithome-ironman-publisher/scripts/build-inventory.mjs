@@ -27,8 +27,6 @@ function parseArgs(argv) {
 
 function prepare(day) {
   const dayString = String(day).padStart(2, "0");
-  const canonicalUrl = `https://gcake119.github.io/ithome-2026/day/${dayString}/`;
-  const syncLine = `本文同步刊載於[個人連載網站](${canonicalUrl})`;
   const result = spawnSync("pnpm", ["ithome:prepare", "--", "--day", String(day), "--json"], {
     cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
   });
@@ -59,10 +57,12 @@ function prepare(day) {
 try {
   accessSync(resolve(process.cwd(), "package.json"), constants.R_OK);
   accessSync(resolve(process.cwd(), "scripts/ithome/prepare.mjs"), constants.R_OK);
-} catch { fail("Run this script from the gcake119/ithome-2026 repository root"); }
+} catch { fail("Run this script from the repository root"); }
 
 const days = parseArgs(process.argv.slice(2));
 const items = days.map(prepare);
 const failed = items.filter((item) => item.status !== "valid");
 process.stdout.write(`${JSON.stringify({ status: failed.length ? "failed" : "complete", expected: days.length, valid: items.length - failed.length, failed: failed.map((item) => item.day), generatedAt: new Date().toISOString(), items }, null, 2)}\n`);
 process.exit(failed.length ? 1 : 0);
+  const canonicalUrl = payload?.canonicalUrl;
+  const syncLine = `本文同步刊載於[個人連載網站](${canonicalUrl})`;

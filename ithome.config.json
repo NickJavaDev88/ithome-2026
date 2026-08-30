@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "initialized": false,
+  "account": "gcake119",
+  "seriesTitle": "AI 都會寫程式了，我還要學什麼？——從「做得出來」到學會開發的 30 天",
+  "contestTag": "18th鐵人賽",
+  "contest": "18th-ironman-2026",
+  "repository": "gcake119/ithome-2026",
+  "seriesKey": "ithome-2026",
+  "day1Date": null,
+  "schedule": [],
+  "githubPages": {
+    "site": "https://gcake119.github.io",
+    "base": "/ithome-2026",
+    "publicUrl": "https://gcake119.github.io/ithome-2026"
+  }
+}

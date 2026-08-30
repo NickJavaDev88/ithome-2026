@@ -2,6 +2,12 @@ import { describe, expect, test, vi } from 'vitest';
 
 import { runUnattendedPublisher } from './unattended-runner.mjs';
 
+const project = {
+  repository: 'gcake119/ithome-2026',
+  seriesKey: 'ithome-2026',
+  githubPages: { publicUrl: 'https://gcake119.github.io/ithome-2026' },
+};
+
 const payload = {
   day: 12,
   dayString: '12',
@@ -17,6 +23,7 @@ describe('unattended local publisher runner', () => {
     const events = [];
     const result = await runUnattendedPublisher({
       day: 12,
+      project,
       prepare: async () => payload,
       publish: async ({ fingerprint }) => ({
         status: 'verified',
@@ -37,6 +44,7 @@ describe('unattended local publisher runner', () => {
     const events = [];
     const result = await runUnattendedPublisher({
       day: 12,
+      project,
       prepare: async () => { throw Object.assign(new Error('missing'), { code: 'ENOENT' }); },
       publish,
       emit: async (event) => events.push(event),
@@ -53,6 +61,7 @@ describe('unattended local publisher runner', () => {
     const events = [];
     const result = await runUnattendedPublisher({
       day: 12,
+      project,
       prepare: async () => payload,
       publish: async ({ fingerprint }) => ({
         status,
@@ -72,6 +81,7 @@ describe('unattended local publisher runner', () => {
     const events = [];
     const result = await runUnattendedPublisher({
       day: 12,
+      project,
       prepare: async () => payload,
       publish: async () => ({
         status: 'verified',

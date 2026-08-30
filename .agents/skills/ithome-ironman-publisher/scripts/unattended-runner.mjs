@@ -8,9 +8,9 @@ function fingerprint(payload) {
   return `sha256:${createHash('sha256').update(JSON.stringify(payload)).digest('hex')}`;
 }
 
-function validPayload(payload, day) {
+function validPayload(payload, day, project) {
   const dayString = String(day).padStart(2, '0');
-  const canonicalUrl = `https://gcake119.github.io/ithome-2026/day/${dayString}/`;
+  const canonicalUrl = `${project.githubPages.publicUrl}/day/${dayString}/`;
   const syncLine = `本文同步刊載於[個人連載網站](${canonicalUrl})`;
   return payload?.day === day
     && payload.dayString === dayString
@@ -21,13 +21,13 @@ function validPayload(payload, day) {
     && payload.syncLine === syncLine;
 }
 
-function eventEnvelope({ day, status, result, completedAt, runId }) {
+function eventEnvelope({ day, status, result, completedAt, runId, project }) {
   return {
     schemaVersion: 1,
     eventId: randomUUID(),
     source: 'codex-ithome-ironman-publisher',
-    repository: 'gcake119/ithome-2026',
-    series: 'ithome-2026',
+    repository: project.repository,
+    series: project.seriesKey,
     operation: 'publish-day',
     day,
     status,
@@ -41,9 +41,10 @@ function abnormalResult(reasonCode, publishClickCount = 0, publicVerification = 
   return { reasonCode, publishClickCount, publicVerification };
 }
 
-export async function runUnattendedPublisher({ day, prepare, publish, emit, now = () => new Date().toISOString(), runId = `local-publisher-${randomUUID()}` }) {
+export async function runUnattendedPublisher({ day, prepare, publish, emit, project, now = () => new Date().toISOString(), runId = `local-publisher-${randomUUID()}` }) {
   if (!Number.isInteger(day) || day < 1 || day > 30) throw new Error('day must be an integer from 1 to 30');
   if (![prepare, publish, emit].every((value) => typeof value === 'function')) throw new Error('prepare, publish, and emit are required functions');
+  if (!project?.repository || !project?.seriesKey || !project?.githubPages?.publicUrl) throw new Error('project configuration is required');
 
   let payload;
   try {
@@ -51,13 +52,13 @@ export async function runUnattendedPublisher({ day, prepare, publish, emit, now 
   } catch (error) {
     const reasonCode = error?.code === 'ENOENT' ? 'payload_missing' : 'payload_failed';
     const result = abnormalResult(reasonCode);
-    await emit(eventEnvelope({ day, status: 'blocked', result, completedAt: now(), runId }));
+    await emit(eventEnvelope({ day, status: 'blocked', result, completedAt: now(), runId, project }));
     return { exitCode: 1, silent: false, status: 'blocked', result };
   }
 
-  if (!validPayload(payload, day)) {
+  if (!validPayload(payload, day, project)) {
     const result = abnormalResult('payload_mismatch');
-    await emit(eventEnvelope({ day, status: 'blocked', result, completedAt: now(), runId }));
+    await emit(eventEnvelope({ day, status: 'blocked', result, completedAt: now(), runId, project }));
     return { exitCode: 1, silent: false, status: 'blocked', result };
   }
 
@@ -79,7 +80,7 @@ export async function runUnattendedPublisher({ day, prepare, publish, emit, now 
     };
   }
 
-  await emit(eventEnvelope({ day, status: outcome.status, result: outcome.result, completedAt: now(), runId }));
+  await emit(eventEnvelope({ day, status: outcome.status, result: outcome.result, completedAt: now(), runId, project }));
   const silent = outcome.status === 'verified';
   return { exitCode: silent ? 0 : 1, silent, status: outcome.status, result: outcome.result };
 }

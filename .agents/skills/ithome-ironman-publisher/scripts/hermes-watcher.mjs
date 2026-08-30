@@ -5,6 +5,7 @@ import { closeSync, constants, fsyncSync, lstatSync, openSync, readFileSync, rea
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 
 import { validateBootstrapState } from './validate-bootstrap-state.mjs';
+import { loadProjectConfigSync } from '../../../../scripts/ithome/config.mjs';
 
 const BRIDGE_ROOT = '/Users/Shared/ithome-ironman-bridge';
 const DEFAULT_MAX_AGE_HOURS = 36;
@@ -15,12 +16,12 @@ function validDate(value) {
   return Number.isNaN(time) ? null : time;
 }
 
-function validEnvelope(event) {
+function validEnvelope(event, project) {
   return event?.schemaVersion === 1
     && typeof event.eventId === 'string' && event.eventId.length >= 8
     && event.source === 'codex-ithome-ironman-publisher'
-    && event.repository === 'gcake119/ithome-2026'
-    && event.series === 'ithome-2026'
+    && event.repository === project.repository
+    && event.series === project.seriesKey
     && validDate(event.completedAt) !== null;
 }
 
@@ -50,7 +51,7 @@ function eventNotifications(event) {
   return [];
 }
 
-export function evaluateWatcher({ events, bootstrap, state = {}, now = new Date().toISOString(), checkpoint, maxAgeHours = DEFAULT_MAX_AGE_HOURS }) {
+export function evaluateWatcher({ events, bootstrap, state = {}, now = new Date().toISOString(), checkpoint, maxAgeHours = DEFAULT_MAX_AGE_HOURS, project = loadProjectConfigSync() }) {
   if (!Array.isArray(events)) throw new Error('events must be an array');
   if (checkpoint !== undefined && !CHECKPOINTS.has(checkpoint)) throw new Error('checkpoint must be day1-1900 or day1-2230');
   const nowMs = validDate(now);
@@ -63,7 +64,7 @@ export function evaluateWatcher({ events, bootstrap, state = {}, now = new Date(
   const notifications = [];
 
   for (const event of events) {
-    if (!validEnvelope(event)) {
+    if (!validEnvelope(event, project)) {
       notifications.push(notification('event_invalid', event));
       continue;
     }
@@ -82,7 +83,7 @@ export function evaluateWatcher({ events, bootstrap, state = {}, now = new Date(
     processed.add(event.eventId);
   }
 
-  const bootstrapErrors = bootstrap ? validateBootstrapState(bootstrap) : ['missing'];
+  const bootstrapErrors = bootstrap ? validateBootstrapState(bootstrap, project) : ['missing'];
   const bootstrapReady = bootstrapErrors.length === 0;
   let bootstrapProblemObserved = state.bootstrapProblemObserved === true;
   let bootstrapRecoveryNotified = state.bootstrapRecoveryNotified === true;

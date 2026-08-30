@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 import { prepareIthomePayload } from '../../../../scripts/ithome/prepare.mjs';
+import { loadProjectConfig } from '../../../../scripts/ithome/config.mjs';
 import { createIthomeBrowserAdapter } from './browser-adapter.mjs';
 import { createPlaywrightIthomeDriver } from './playwright-browser-driver.mjs';
 import { runUnattendedPublisher } from './unattended-runner.mjs';
@@ -15,9 +16,6 @@ import { validateBootstrapState } from './validate-bootstrap-state.mjs';
 
 const execFileAsync = promisify(execFile);
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
-const EXPECTED_ACCOUNT = 'gcake119';
-const EXPECTED_SERIES_TITLE = 'AI 都會寫程式了，我還要學什麼？——從「做得出來」到學會開發的 30 天';
-const EXPECTED_CONTEST_TAG = '18th鐵人賽';
 
 export function parseRunnerArgs(argv = []) {
   const args = argv[0] === '--' ? argv.slice(1) : argv;
@@ -80,21 +78,22 @@ async function createEventEmitter(config) {
 
 export async function runBrowserPublisher({ day, env = process.env }) {
   const config = loadRunnerConfig(env);
+  const project = await loadProjectConfig({ requireInitialized: true });
   const driver = createPlaywrightIthomeDriver({
     config: {
       cdpEndpoint: config.cdpEndpoint,
       draftsUrl: config.draftsUrl,
       publicArticlesUrl: config.publicArticlesUrl,
-      expectedAccount: EXPECTED_ACCOUNT,
-      expectedSeriesTitle: EXPECTED_SERIES_TITLE,
-      expectedContestTag: EXPECTED_CONTEST_TAG,
+      expectedAccount: project.account,
+      expectedSeriesTitle: project.seriesTitle,
+      expectedContestTag: project.contestTag,
     },
   });
   const publish = createIthomeBrowserAdapter({
     driver,
-    expectedAccount: EXPECTED_ACCOUNT,
-    expectedSeriesTitle: EXPECTED_SERIES_TITLE,
-    expectedContestTag: EXPECTED_CONTEST_TAG,
+    expectedAccount: project.account,
+    expectedSeriesTitle: project.seriesTitle,
+    expectedContestTag: project.contestTag,
     loadBootstrap: () => loadVerifiedBootstrap(config.bootstrapState),
   });
   return runUnattendedPublisher({
@@ -102,6 +101,7 @@ export async function runBrowserPublisher({ day, env = process.env }) {
     prepare: prepareIthomePayload,
     publish,
     emit: await createEventEmitter(config),
+    project,
   });
 }
 

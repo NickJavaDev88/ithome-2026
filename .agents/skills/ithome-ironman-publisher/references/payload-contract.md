@@ -12,7 +12,7 @@ Required fields and invariants:
 - `dayString` equals the zero-padded Day.
 - `sourcePath` equals `src/content/posts/day-NN.md`.
 - `title` and `body` are non-empty strings.
-- `canonicalUrl` exactly equals `https://gcake119.github.io/ithome-2026/day/NN/`.
+- `canonicalUrl` exactly equals `<githubPages.publicUrl>/day/NN/` from `ithome.config.json`.
 - `syncLine` exactly equals `本文同步刊載於[個人連載網站](<canonicalUrl>)`.
 - The first line of `body` exactly equals `syncLine`.
 - Treat the Markdown syntax as part of the payload contract. A bare URL or altered link label is a mismatch.

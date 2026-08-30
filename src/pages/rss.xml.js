@@ -1,11 +1,13 @@
 import rss from '@astrojs/rss';
 import { getPublishedPosts, dayPath } from '../lib/posts';
+import { loadProjectConfigSync } from '../../scripts/ithome/config.mjs';
 
 export async function GET(context) {
   const posts = await getPublishedPosts();
+  const project = loadProjectConfigSync();
   return rss({
-    title: 'AI 都會寫程式了，我還要學什麼？',
-    description: '從「做得出來」到學會開發的 30 天',
+    title: project.seriesTitle,
+    description: `${project.seriesTitle}：30 天系列文章`,
     site: context.site,
     customData: '<language>zh-TW</language>',
     items: posts.map((post) => ({

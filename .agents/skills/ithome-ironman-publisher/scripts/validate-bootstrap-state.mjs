@@ -2,6 +2,7 @@
 
 import { lstatSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { loadProjectConfigSync } from '../../../../scripts/ithome/config.mjs';
 
 function validTimestamp(value) {
   return typeof value === 'string' && !Number.isNaN(Date.parse(value));
@@ -18,12 +19,12 @@ function parseIthomeUrl(value, pattern) {
   }
 }
 
-export function validateBootstrapState(state) {
+export function validateBootstrapState(state, project = loadProjectConfigSync()) {
   const errors = [];
   if (state?.schemaVersion !== 1) errors.push('schemaVersion');
   if (state?.source !== 'codex-ithome-ironman-publisher') errors.push('source');
-  if (state?.repository !== 'gcake119/ithome-2026') errors.push('repository');
-  if (state?.contest !== '18th-ironman-2026') errors.push('contest');
+  if (state?.repository !== project.repository) errors.push('repository');
+  if (state?.contest !== project.contest) errors.push('contest');
   if (state?.bootstrapDay !== 1) errors.push('bootstrapDay');
   if (state?.status !== 'verified') errors.push('status');
   const article = parseIthomeUrl(state?.articleUrl, /^\/articles\/[^/]+\/?$/);

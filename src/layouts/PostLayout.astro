@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import { dayPath, getAllPosts, isPublished, type Post } from '../lib/posts';
+import { loadProjectConfigSync } from '../../scripts/ithome/config.mjs';
 
 interface Props {
   post: Post;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 const { post, previous, next } = Astro.props;
+const project = loadProjectConfigSync();
 const date = post.data.publishDate?.toLocaleDateString('zh-TW', {
   timeZone: 'Asia/Taipei',
   year: 'numeric',
@@ -31,14 +33,14 @@ const lastRead = {
       <a class="sidebar-brand" href={base}>
         <span class="code-mark">&lt;/&gt;</span>
         <span>
-          <strong>AI 都會寫程式了，<br />我還要學什麼？</strong>
-          <small>從「做得出來」到學會開發的 30 天</small>
+          <strong>{project.seriesTitle}</strong>
+          <small>iThome 鐵人賽 30 天連載</small>
         </span>
       </a>
 
       <div class="sidebar-heading">
         <h2><a href={base}>系列導覽</a></h2>
-        <p>30 天從學習起點，一路整理產品、工程與 AI 協作。</p>
+        <p>Day 1～30 文章導覽。</p>
       </div>
 
       <nav class="series-tree" aria-label="30 天系列文章">
@@ -113,9 +115,9 @@ const lastRead = {
     </main>
   </div>
 
-  <script is:inline define:vars={{ lastRead }}>
+  <script is:inline define:vars={{ lastRead, storageKey: `${project.seriesKey}:last-read` }}>
     try {
-      localStorage.setItem('ithome-2026:last-read', JSON.stringify(lastRead));
+      localStorage.setItem(storageKey, JSON.stringify(lastRead));
     } catch (_) {}
   </script>
 </BaseLayout>

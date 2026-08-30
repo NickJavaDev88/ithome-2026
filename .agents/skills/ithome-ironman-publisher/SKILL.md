@@ -1,6 +1,6 @@
 ---
 name: ithome-ironman-publisher
-description: Audit, import, repair, and publish the gcake119/ithome-2026 Ironman series through Computer Use using repo-generated payloads. Use only for this repository's iThome draft and daily publishing workflow.
+description: Audit, import, repair, and publish a configured iThome Ironman series using repo-generated payloads.
 ---
 
 # iThome Ironman Publisher
@@ -36,7 +36,7 @@ Read only what the selected mode needs:
 
 ## Common workflow
 
-1. Confirm the current working directory is the `gcake119/ithome-2026` repository.
+1. Confirm the current working directory contains `ithome.config.json` and the configured article sources.
 2. Record the selected mode, explicit Day target, and a new run ID.
 3. Build a fresh payload with `pnpm ithome:prepare -- --day N --json`, or use `scripts/build-inventory.mjs` for deterministic validation.
 4. Run the mode-specific preflight. Fail closed on incomplete or ambiguous evidence.

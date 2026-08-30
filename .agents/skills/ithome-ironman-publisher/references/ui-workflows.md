@@ -7,8 +7,8 @@ The following mapping was verified from user-provided screenshots of the logged-
 The only permitted series for this skill is:
 
 - Category: `Software Development`
-- Series title: `AI 都會寫程式了，我還要學什麼？——從「做得出來」到學會開發的 30 天`
-- Visible contest tag: `18th鐵人賽`
+- Series title: the exact `seriesTitle` from `ithome.config.json`.
+- Visible contest tag: the exact `contestTag` from `ithome.config.json`.
 
 Match the complete category and complete series title. Do not select by card position, category alone, truncated title, current challenge Day, or the fact that only one option is visible.
 
@@ -31,7 +31,7 @@ The verified editor contains:
 - A title field with placeholder similar to `在這裡幫文章下個好標題...`.
 - A Markdown body editor with placeholder similar to `在這裡開始寫文章囉...`.
 - A Markdown toolbar and preview control. Do not use toolbar transformations to rewrite the payload.
-- A bottom contest tag showing `18th鐵人賽`.
+- A bottom contest tag exactly matching the configured `contestTag`.
 - A green split button: the main action is `儲存草稿`; its adjacent arrow opens additional actions.
 
 Paste payload `title` into the title field and the entire payload `body` into the Markdown body editor. Do not paste title into the series header or category area.
