@@ -25,4 +25,13 @@ describe('Hermes watcher Telegram formatter', () => {
     expect(formatNotifications([{ kind: 'audit_failed', failure: { reasonCode: 'ui_unreadable' } }])).toContain('ui_unreadable');
     expect(formatNotifications([{ kind: 'bootstrap_recovered' }])).toBe('iThome Day 1 verified bootstrap state 已就緒，公開系列頁 watchdog 可以開始監控。');
   });
+
+  test('distinguishes public mismatch from an unavailable public page', () => {
+    expect(formatNotifications([{ kind: 'publication_reminder', day: 17, date: '2026-08-29' }]))
+      .toBe('鐵人賽發文提醒：今天應發布 Day 17（2026-08-29）。');
+    expect(formatNotifications([{ kind: 'public_article_missing', day: 17, date: '2026-08-29' }]))
+      .toBe('鐵人賽發文提醒：目前尚未偵測到 Day 17（2026-08-29）的公開文章。');
+    expect(formatNotifications([{ kind: 'public_watchdog_unavailable', day: 17 }]))
+      .toBe('鐵人賽發文檢查失敗：目前無法可靠讀取系列頁，請人工確認。');
+  });
 });

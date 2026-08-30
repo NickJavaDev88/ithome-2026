@@ -1,6 +1,6 @@
 # Day 1 bootstrap and series state
 
-The public `/ironman/<series-id>` identity does not exist until Day 1 is formally published. Treat Day 1 as a bootstrap workflow and never require, guess, or synthesize a series ID before then.
+The public series identity does not exist until Day 1 is formally published. Treat Day 1 as a bootstrap workflow and never require, guess, or synthesize a series ID before then.
 
 ## State machine
 
@@ -24,7 +24,7 @@ After verifying the public Day 1 article title and canonical sync line:
 2. Locate the series-name link in the metadata row immediately above the article title. The user-provided UI evidence shows category, linked series name, and `系列第 1 篇` above the title.
 3. Match the complete registered series title before using the link. Do not rely on position, category alone, `第 1 篇`, truncated text, or a search result.
 4. Read the link's actual destination as `seriesUrl`.
-5. Require the expected iThome HTTPS host and an exact `/ironman/<series-id>` path shape.
+5. Require the expected iThome HTTPS host and an observed official series path: `/ironman/<series-id>` or `/users/<user-id>/ironman/<series-id>`.
 6. Extract `seriesId` only from that verified URL, then reconstruct the URL from the extracted ID and require exact equality.
 7. Open the series URL and verify the complete series title and exact Day 1 article.
 8. Obtain `publishedAt` from the verified public article metadata. If it cannot be read reliably, bootstrap is incomplete.

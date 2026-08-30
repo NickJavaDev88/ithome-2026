@@ -28,7 +28,10 @@ describe('unattended local publisher runner', () => {
       publish: async ({ fingerprint }) => ({
         status: 'verified',
         fingerprint,
-        result: { reasonCode: 'published', publishClickCount: 1, publicVerification: 'verified' },
+        result: {
+          reasonCode: 'published', publishClickCount: 1, publicVerification: 'verified',
+          articleUrl: 'https://ithelp.ithome.com.tw/articles/123456', title: payload.title, canonicalUrl: payload.canonicalUrl,
+        },
       }),
       emit: async (event) => events.push(event),
       now: () => '2026-09-12T01:00:00.000Z',
@@ -36,7 +39,7 @@ describe('unattended local publisher runner', () => {
     });
 
     expect(result).toMatchObject({ exitCode: 0, silent: true, status: 'verified' });
-    expect(events).toMatchObject([{ operation: 'publish-day', day: 12, status: 'verified' }]);
+    expect(events).toMatchObject([{ operation: 'publish-day', day: 12, status: 'verified', result: { articleUrl: 'https://ithelp.ithome.com.tw/articles/123456' } }]);
   });
 
   test('fails closed before the driver when the source payload is missing', async () => {

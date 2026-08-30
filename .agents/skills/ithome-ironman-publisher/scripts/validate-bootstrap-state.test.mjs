@@ -23,6 +23,14 @@ describe('Day 2-30 bootstrap gate', () => {
     expect(validateBootstrapState(verifiedState)).toEqual([]);
   });
 
+  test('accepts the public user-scoped series URL shape observed in live Hermes testing', () => {
+    expect(validateBootstrapState({
+      ...verifiedState,
+      seriesUrl: 'https://ithelp.ithome.com.tw/users/20065770/ironman/9031',
+      seriesId: '9031',
+    })).toEqual([]);
+  });
+
   test.each([
     ['missing state', null],
     ['unverified state', { ...verifiedState, status: 'incomplete' }],

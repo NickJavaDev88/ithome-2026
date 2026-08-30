@@ -82,6 +82,35 @@ describe('event contract', () => {
     expect(result.stderr).toContain('publishClickCountInvariant');
   });
 
+  test('requires minimal public identity on a verified publish event', () => {
+    const eventDir = mkdtempSync(join(tmpdir(), 'ithome-events-'));
+    const missing = run('write-event.mjs', {
+      ...common,
+      eventId: 'verified-1234',
+      operation: 'publish-day',
+      day: 12,
+      status: 'verified',
+      result: { reasonCode: 'published', publishClickCount: 1, publicVerification: 'verified' },
+    }, { ITHOME_EVENT_DIR: eventDir });
+    expect(missing.status).not.toBe(0);
+    expect(missing.stderr).toContain('verifiedPublishEvidence');
+
+    const valid = run('write-event.mjs', {
+      ...common,
+      eventId: 'verified-5678',
+      operation: 'publish-day',
+      day: 12,
+      status: 'verified',
+      result: {
+        reasonCode: 'published', publishClickCount: 1, publicVerification: 'verified',
+        articleUrl: 'https://ithelp.ithome.com.tw/articles/123456',
+        title: 'Day 12 test',
+        canonicalUrl: 'https://gcake119.github.io/ithome-2026/day/12/',
+      },
+    }, { ITHOME_EVENT_DIR: eventDir });
+    expect(valid.status).toBe(0);
+  });
+
   test('rejects event payloads containing forbidden secrets or article body', () => {
     const eventDir = mkdtempSync(join(tmpdir(), 'ithome-events-'));
     const result = run('write-event.mjs', {

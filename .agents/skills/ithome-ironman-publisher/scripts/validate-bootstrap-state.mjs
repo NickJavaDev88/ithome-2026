@@ -28,7 +28,7 @@ export function validateBootstrapState(state, project = loadProjectConfigSync())
   if (state?.bootstrapDay !== 1) errors.push('bootstrapDay');
   if (state?.status !== 'verified') errors.push('status');
   const article = parseIthomeUrl(state?.articleUrl, /^\/articles\/[^/]+\/?$/);
-  const series = parseIthomeUrl(state?.seriesUrl, /^\/ironman\/([^/]+)\/?$/);
+  const series = parseIthomeUrl(state?.seriesUrl, /^(?:\/ironman\/|\/users\/[^/]+\/ironman\/)([^/]+)\/?$/);
   if (!article) errors.push('articleUrl');
   if (!series) errors.push('seriesUrl');
   if (typeof state?.seriesId !== 'string' || !state.seriesId) errors.push('seriesId');

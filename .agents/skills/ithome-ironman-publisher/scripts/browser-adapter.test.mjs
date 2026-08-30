@@ -101,7 +101,14 @@ describe('iThome browser adapter', () => {
     expect(outcome).toMatchObject({
       status: 'verified',
       fingerprint: 'sha256:fresh',
-      result: { reasonCode: 'published', publishClickCount: 1, publicVerification: 'verified' },
+      result: {
+        reasonCode: 'published',
+        publishClickCount: 1,
+        publicVerification: 'verified',
+        articleUrl: 'https://ithelp.ithome.com.tw/articles/123456',
+        title: payload.title,
+        canonicalUrl: payload.canonicalUrl,
+      },
     });
   });
 

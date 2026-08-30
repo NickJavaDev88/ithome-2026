@@ -46,10 +46,10 @@ function validate(event) {
     if (event.day !== 1) errors.push("day");
     if (event.status === "verified") {
       if (!validIthomeUrl(event.articleUrl, /^\/articles\/[^/]+\/?$/)) errors.push("articleUrl");
-      if (!validIthomeUrl(event.seriesUrl, /^\/ironman\/[^/]+\/?$/)) errors.push("seriesUrl");
+      if (!validIthomeUrl(event.seriesUrl, /^(?:\/ironman\/|\/users\/[^/]+\/ironman\/)[^/]+\/?$/)) errors.push("seriesUrl");
       if (typeof event.seriesId !== "string" || !event.seriesId) errors.push("seriesId");
       else {
-        const match = new URL(event.seriesUrl).pathname.match(/^\/ironman\/([^/]+)\/?$/);
+        const match = new URL(event.seriesUrl).pathname.match(/^(?:\/ironman\/|\/users\/[^/]+\/ironman\/)([^/]+)\/?$/);
         if (!match || match[1] !== event.seriesId) errors.push("seriesIdentityInvariant");
       }
       if (!validTimestamp(event.publishedAt)) errors.push("publishedAt");
@@ -68,6 +68,13 @@ function validate(event) {
     if (!Number.isInteger(event.day) || event.day < 1 || event.day > 30) errors.push("day");
     if (!["verified", "blocked", "failed", "uncertain", "cancelled"].includes(event.status)) errors.push("status");
     if (!event.result || !Number.isInteger(event.result.publishClickCount) || event.result.publishClickCount < 0 || event.result.publishClickCount > 1) errors.push("publishClickCountInvariant");
+    if (event.status === "verified") {
+      const expectedCanonical = `${project.githubPages.publicUrl}/day/${String(event.day).padStart(2, "0")}/`;
+      if (event.result?.publicVerification !== "verified"
+        || !validIthomeUrl(event.result?.articleUrl, /^\/articles\/[^/]+\/?$/)
+        || typeof event.result?.title !== "string" || !event.result.title.trim()
+        || event.result?.canonicalUrl !== expectedCanonical) errors.push("verifiedPublishEvidence");
+    }
   } else errors.push("operation");
   return errors;
 }

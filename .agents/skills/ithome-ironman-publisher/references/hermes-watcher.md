@@ -41,3 +41,17 @@ node .agents/skills/ithome-ironman-publisher/scripts/hermes-watcher.mjs \
 - After a checkpoint has observed missing or invalid bootstrap state, the first later valid state produces one `bootstrap_recovered` decision. Later runs remain silent.
 
 Scheduling, Telegram relay, service-account filesystem verification, and the public-page network check remain Hermes deployment work and require separate authorization and live acceptance.
+
+## Daily publication reminder and public verification
+
+`scripts/hermes-public-series-watchdog.mjs` implements the repository-controlled daily decision logic. It uses the explicit `ithome.config.json` schedule; it never guesses the Day from series order.
+
+- `--mode reminder` emits one unconditional 09:00 reminder for the scheduled Day.
+- `--mode check --checkpoint public-1900` performs the 19:00 check.
+- `--mode check --checkpoint public-2230` performs the independent 22:30 check.
+- A check reads the verified publish event, follows the verified public series page to its highest pagination page, requires the expected article to be the final entry with the exact title, then fetches that public article and requires the scheduled publication date and exact canonical URL.
+- Each public fetch tries once and retries at most twice, waiting two minutes between attempts. Only exhausted read failures produce `public_watchdog_unavailable`; they are never reported as an unpublished article.
+- A verified result is silent. Missing, non-latest, title-mismatched, canonical-mismatched, or missing verified publish evidence produces a publication reminder.
+- Reminder and both checkpoints use separate deduplication keys in the Hermes-owned `public-watchdog-state.json`.
+
+The script does not install schedules or send Telegram. Pipe its JSON result through `scripts/hermes-watcher-notify.mjs` and the existing Hermes `--no-agent` relay.

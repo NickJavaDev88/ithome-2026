@@ -74,7 +74,13 @@ export function createIthomeBrowserAdapter({
         if (!verification?.verified) {
           return outcome('uncertain', fingerprint, 'post_publish_unverified', { publishClickCount, publicVerification: 'uncertain' });
         }
-        return outcome('verified', fingerprint, 'published', { publishClickCount, publicVerification: 'verified' });
+        return outcome('verified', fingerprint, 'published', {
+          publishClickCount,
+          publicVerification: 'verified',
+          articleUrl: verification.articleUrl,
+          title: payload.title,
+          canonicalUrl: payload.canonicalUrl,
+        });
       } catch {
         return outcome('uncertain', fingerprint, 'post_publish_unverified', { publishClickCount, publicVerification: 'uncertain' });
       }

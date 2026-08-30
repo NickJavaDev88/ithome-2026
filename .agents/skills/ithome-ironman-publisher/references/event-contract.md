@@ -77,4 +77,21 @@ Audit statuses are `complete`, `incomplete`, `conflict`, or `failed`. Duplicate 
 
 Publish statuses are `verified`, `blocked`, `failed`, `uncertain`, or `cancelled`.
 
+A `verified` publish event must additionally carry the minimum public identity needed by the read-only Hermes watchdog:
+
+```json
+{
+  "result": {
+    "reasonCode": "published",
+    "publishClickCount": 1,
+    "publicVerification": "verified",
+    "articleUrl": "https://ithelp.ithome.com.tw/articles/...",
+    "title": "<exact published title>",
+    "canonicalUrl": "https://<pages-host>/<repo>/day/12/"
+  }
+}
+```
+
+These fields are public metadata, not article content. They let Hermes verify the latest series entry and canonical link without reading the repository Markdown or receiving an iThome session.
+
 Never include body, cookies, session state, Telegram credentials, screenshots, HTML dumps, or secrets. Use `scripts/write-event.mjs --input <event.json>` only after `ITHOME_EVENT_DIR` is configured. It validates and atomically writes; it never sends Telegram or configures Hermes.
