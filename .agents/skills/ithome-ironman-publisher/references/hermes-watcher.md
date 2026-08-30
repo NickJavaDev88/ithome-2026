@@ -12,6 +12,8 @@ The watcher reads:
 
 It prints one JSON result. `notifications` contains messages that Hermes may relay through its existing Telegram capability. `watchdog.status: "ready"` hands the verified `seriesUrl` and `seriesId` to the existing public-series watchdog. A blocked watchdog must not guess the series identity.
 
+Pipe that JSON through `scripts/hermes-watcher-notify.mjs` for Hermes `--no-agent` delivery. It prints nothing when `notifications` is empty, so a healthy run remains silent; it never reads Telegram credentials.
+
 The watcher refuses to store its own state anywhere below `/Users/Shared/ithome-ironman-bridge`. The state directory must already exist and be owned and writable by the Hermes service environment.
 
 ## Dry run
