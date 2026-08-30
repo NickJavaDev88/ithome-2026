@@ -245,79 +245,140 @@ Day 1 發布後，還必須從公開文章驗證系列連結，才可建立 veri
 
 由於安裝排程會修改本機環境，請先完成一次不點擊發布的 preflight，再明確授權 AI Agent 安裝。安裝完成後，要求 Agent 回報排程檔位置、執行使用者、時區、下一次執行時間與 dry-run／mock 驗證結果。正式 Day 1 發布仍要等開賽後驗收。
 
-## 8．選配 Hermes 監控
+## 8．用 Hermes 接收發文提醒（選用）
 
-Hermes 只讀取 publisher 的 machine-readable event 與 verified bootstrap state，不登入 iThome、不讀草稿正文、不持有 Chrome 或 Telegram credential，也不負責發布。
+這一段不是自動發文。Hermes 只負責兩件事：提醒你今天要發哪一篇，以及檢查文章有沒有正確出現在公開系列頁。本文所說的 publisher，就是前面負責發布文章的本機程式。
 
-bootstrap 就緒後，watcher 會把已驗證的 `seriesUrl` 交給既有公開系列頁 watchdog。Hermes 自己的 deduplication state 必須放在 Hermes 私有可寫目錄，共享 event／bootstrap 位置只給它讀取權限。
+Hermes 不會登入 iThome、不會讀取草稿正文，也不會替你按下發布。iThome 的登入資料留在 publisher 使用的 Chrome；Telegram 的連線資料留在 Hermes，兩邊不要交換。
 
-啟用 Hermes 需要在目標主機另行完成：目錄權限、watcher 安裝、既有 Telegram relay 串接與公開系列頁真實驗收。本 repo 不會安裝排程、不會發 Telegram，也不會建立第二個 poller。
+### 啟用後會發生什麼事？
 
-### 本專案目前的 Hermes 測試環境
+比賽期間每天會執行三次：
 
-本專案已測試的 Hermes 安裝在同一台 Mac 上，但使用獨立的本機使用者帳號 `hermes`。它與平常操作 repo、持有 iThome Chrome profile 的使用者分開，目的是隔離檔案權限與登入資料。
+- 09:00：一定會提醒「今天應發布 Day 幾」。
+- 19:00：第一次檢查公開系列頁。
+- 22:30：再檢查一次公開系列頁。
 
-目前的權限分工是：
+晚間檢查會找到系列的最後一頁與最後一篇文章，再核對文章標題、發布日期、網址，以及文章裡的個人連載網站連結。全部正確就不傳訊息；有缺漏才通知你。
 
-- 一般使用者／publisher 可以寫入 repo 外的 event 與 bootstrap state。
-- `hermes` 使用者只能讀取共享 event 與 verified bootstrap state。
-- Hermes 的 `watcher-state.json` 只能寫在 `hermes` 自己擁有的私有目錄。
-- `hermes` 無法寫回共享 bridge，也拿不到 iThome Chrome profile、cookie 或 publisher 的登入 session。
-- Telegram credential 只留在 Hermes 既有環境，不交給 repo、publisher 或 Codex。
+如果只是 iThome 頁面暫時讀不到，Hermes 會再試 2 次，每次間隔 2 分鐘。三次都失敗後，才通知你人工檢查。它不會把「網站讀不到」誤報成「文章尚未發布」。
 
-這是本專案目前採用並做過 watcher／Telegram 異常通知驗收的隔離方式。fork 使用者不一定要把帳號命名為 `hermes`，也可以把 Hermes 安裝在另一台主機；但必須維持相同原則：publisher 負責發布，Hermes 只讀監控，而且兩邊不交換登入憑證。
+不在 `ithome.config.json` 設定的 30 天比賽日期內，三個任務都會保持安靜。
 
-### 第一次要手動傳給 Hermes 的訊息
+### 已經測過哪些部分？
 
-Hermes 不會因為你 fork 這個 repo 就自動開始監控。第一次設定時，先把下面訊息傳給 Hermes，並替換角括號內的路徑。這則訊息只授權唯讀檢查與 dry-run，不授權安裝排程：
+2026-08-29 曾使用另一個公開系列做一次測試：09:00 提醒有收到；19:00 與 22:30 也能讀取系列列表，並在最後一篇不是預期的 Day 17 時傳送提醒。
 
-```text
-請為 iThome publisher watcher 做開賽前唯讀檢查與 dry-run。
+這證明 Hermes 能讀公開系列頁並回報到 Telegram。不過，那次使用的是別人的測試系列，不代表本專案的正式排程已經啟用；「頁面讀取失敗後重試」也還需要在正式 Hermes 環境做一次不影響真實資料的測試。
 
-repo 絕對路徑：
-<你的 ithome repo 絕對路徑>
+### 開始前，先準備 4 個位置
 
-publisher event 目錄：
-<repo 外的 event 目錄絕對路徑>
+如果你不知道這些位置在哪裡，可以直接把下面整段交給 AI Agent，請它先找出實際路徑，不要自己猜。
 
-verified bootstrap state：
-<repo 外的 series-bootstrap.json 絕對路徑>
+1. 專案資料夾：這個 repo 在電腦上的完整路徑。
+2. 發布結果資料夾：publisher 每次完成後放結果檔案的位置。
+3. 系列資料檔：Day 1 發布後，記錄正確系列網址的 `series-bootstrap.json`。
+4. Hermes 私有資料夾：只能讓 Hermes 寫入，用來記住哪些提醒已經傳過。
 
-Hermes 私有 state：
-<Hermes 自己可寫的目錄>/watcher-state.json
-
-請先閱讀 repo 內：
-.agents/skills/ithome-ironman-publisher/references/hermes-watcher.md
-
-確認以下規則：
-1. Hermes 只讀 event 與 verified bootstrap state，不可回寫共享 bridge。
-2. watcher-state.json 必須放在 Hermes 私有可寫目錄。
-3. notifications 非空時，才透過目前既有的 Telegram Gateway 以 --no-agent 傳送。
-4. 正常結果保持安靜，不建立第二個 Telegram poller。
-5. bootstrap ready 後，把已驗證的 seriesUrl 與 seriesId 交給既有公開系列頁 watchdog；不可自行猜系列網址。
-6. 不登入 iThome、不取得 cookie、不讀取草稿或文章正文。
-
-本次只執行 fixture dry-run 與權限檢查，不安裝排程、不重啟 Gateway、不發真實 Telegram。完成後回報實際使用的路徑、dry-run 結果、通知是否為空，以及仍待授權的動作。
-```
-
-dry-run 與權限檢查通過後，如果你確定要啟用 Hermes，再另外傳送：
+本專案原始測試環境通常使用：
 
 ```text
-我已確認前一次 iThome publisher watcher dry-run 與路徑檢查結果。
-
-現在授權你在目前 Hermes 環境完成以下設定：
-1. 使用既有 watcher 與 notify adapter 建立每 5 分鐘執行的 watcher。
-2. notifications 非空時，才透過目前既有的 Telegram Gateway 以 --no-agent 傳送；成功時保持安靜。
-3. 不建立第二個 Telegram poller。
-4. Hermes 去重 state 只寫入前次確認的 Hermes 私有目錄，不回寫共享 bridge。
-5. Day 1 另外建立 19:00 的 day1-1900 checkpoint 與 22:30 的 day1-2230 checkpoint。
-6. bootstrap ready 後，使用 verified seriesUrl 啟用既有公開系列頁 watchdog；不需要每天人工設定文章網址。
-7. 建立後立即做一次不產生通知的驗收，回報 job ID、排程、執行模式、state 路徑與下一次執行時間。
-
-若驗收產生 notifications，先把通知內容回報給我；不要為了測試而製造真實 publisher 失敗事件，也不要登入或操作 iThome。
+專案資料夾：<你的專案資料夾完整路徑>
+發布結果資料夾：/Users/Shared/ithome-ironman-bridge/events/
+系列資料檔：/Users/Shared/ithome-ironman-bridge/state/series-bootstrap.json
+Hermes 私有資料夾：請讓 Hermes 回報它實際使用的位置，不要放在共享資料夾裡。
 ```
 
-這兩段訊息只處理選配監控，不會建立 09:30 iThome publisher 排程。Publisher 排程必須在持有專用 Chrome profile 的本機環境另外安裝與驗收。
+如果你的專案不在上述位置，請先把路徑換成自己的實際位置，再貼給 Hermes。
+
+### 第一步：先請 Hermes 檢查，不要建立排程
+
+把下面內容貼到目前接收通知的 Hermes Telegram 對話。這一步只檢查檔案、權限與程式，不會建立排程，也不會傳測試通知。
+
+```text
+請幫我檢查 iThome 發文提醒功能是否可以啟用，先不要建立排程。
+
+專案資料夾：
+<你的專案資料夾完整路徑>
+
+發布結果資料夾：
+/Users/Shared/ithome-ironman-bridge/events/
+
+系列資料檔：
+/Users/Shared/ithome-ironman-bridge/state/series-bootstrap.json
+
+請你完成以下檢查：
+1. 閱讀 README.md 的「用 Hermes 接收發文提醒」以及 .agents/skills/ithome-ironman-publisher/references/hermes-watcher.md。
+2. 確認目前 repo 已包含 hermes-public-series-watchdog.mjs 與 hermes-watcher-notify.mjs。
+3. 確認你只能讀取發布結果資料夾與系列資料檔，不能改寫或刪除它們。
+4. 在你自己的私有資料夾中規劃 watcher-state.json 與 public-watchdog-state.json 的位置，不要放進共享資料夾。
+5. 使用測試資料執行 dry-run（只測試、不寫入正式狀態），確認三種結果：文章正確時保持安靜、文章不符時產生提醒、頁面讀取失敗時產生檢查失敗通知。
+6. 不要登入 iThome、不要操作草稿、不要發布文章、不要傳送真實 Telegram 訊息，也不要建立第二個 Telegram 接收程式。
+
+完成後請用白話回報：
+- 每個檔案與資料夾是否存在；
+- 權限是否正確；
+- dry-run 三種結果是否符合預期；
+- 你準備把兩個私人狀態檔放在哪裡；
+- 還缺少什麼；
+- 現在是否適合建立正式排程。
+```
+
+看到 Hermes 明確回報「檢查通過」後，再進行第二步。如果它回報路徑不存在、權限錯誤或 dry-run 失敗，先處理問題，不要繼續建立排程。
+
+### 第二步：請 Hermes 建立正式排程
+
+確認第一步通過後，把下面內容貼到同一個 Hermes Telegram 對話：
+
+```text
+我已確認前一次 iThome 發文提醒檢查通過。現在請建立正式排程。
+
+請使用前一次已確認的專案、發布結果、系列資料檔與 Hermes 私有狀態檔路徑，不要重新猜測路徑，也不要沿用別人的測試系列。
+
+請建立 Asia/Taipei 時區的三個每日任務：
+1. 09:00：執行 reminder 模式，提醒今天應發布的 Day 與日期。
+2. 19:00：執行 check 模式，檢查代號使用 public-1900。
+3. 22:30：執行 check 模式，檢查代號使用 public-2230。
+
+程式必須依 ithome.config.json 已設定的 30 天日期表決定今天是哪個 Day。不是比賽日期時保持安靜，不要自己用日期推算，也不要從系列文章順序猜 Day。
+
+晚間檢查請依序確認：
+1. 讀取今天發布成功後留下的公開文章資料。
+2. 使用 Day 1 已確認的正式系列網址，不要猜網址。
+3. 找到系列最後一頁與最後一篇文章。
+4. 核對文章網址、完整標題與發布日期。
+5. 打開公開文章，核對個人連載網站連結。
+
+全部正確時保持安靜。成功讀取頁面但內容不符時，傳送尚未偵測到文章的提醒。頁面讀取失敗時，最多再試 2 次，每次間隔 2 分鐘；仍然失敗才通知我人工檢查，不可誤報成尚未發布。
+
+所有通知都使用目前既有的 Telegram Gateway，並以 --no-agent 模式傳送。不要建立第二個 Telegram 接收程式。
+
+這次只授權唯讀檢查、排程與通知，不授權登入 iThome、操作草稿、發布文章或修改公開文章。
+
+建立完成後，先做一次不發送真實通知的驗收，然後回報：
+- 三個任務的名稱與 job ID；
+- 每個任務的執行時間與時區；
+- 使用哪個本機帳號執行；
+- 實際使用的 repo 版本；
+- 兩個 Hermes 私人狀態檔的位置；
+- 下一次執行時間；
+- 驗收結果；
+- 是否仍使用原本的 Telegram Gateway 與 --no-agent 模式。
+```
+
+### 怎樣才算設定完成？
+
+不要只看 Hermes 說「已建立」。至少要拿到以下資料：
+
+- 3 個任務各自的 job ID（排程系統給每個任務的識別碼）。
+- 時區是 `Asia/Taipei`。
+- 執行時間分別是 09:00、19:00、22:30。
+- 兩個私人狀態檔不在 `/Users/Shared/ithome-ironman-bridge` 裡。
+- 測試結果能清楚分出「文章不符」和「頁面讀取失敗」。
+- 正常結果不會傳 Telegram 訊息。
+- Hermes 沒有取得 iThome cookie、Chrome profile 或其他登入資料。
+
+這些排程只負責提醒與檢查，不包含每天 09:30 的自動發布。自動發布要在持有專用 Chrome profile 的 publisher 環境另外安裝與驗收。
 
 ## Fail closed 安全規則
 
