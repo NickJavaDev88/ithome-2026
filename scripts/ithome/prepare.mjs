@@ -1,9 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 const SITE_URL = 'https://gcake119.github.io/ithome-2026';
-const POSTS_DIR = path.resolve('src/content/posts');
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const POSTS_DIR = path.join(REPO_ROOT, 'src/content/posts');
 
 function parseArgs(argv) {
   const args = { day: null, json: false };
@@ -58,13 +59,13 @@ export async function prepareIthomePayload(day) {
   if (!body.trim()) throw new Error(`${filename}: body is empty.`);
 
   const canonicalUrl = `${SITE_URL}/day/${dayString}/`;
-  const syncLine = `本文同步刊載於個人連載網站：${canonicalUrl}`;
+  const syncLine = `本文同步刊載於[個人連載網站](${canonicalUrl})`;
   const ithomeBody = `${syncLine}\n\n${body.trim()}\n`;
 
   return {
     day,
     dayString,
-    sourcePath: path.relative(process.cwd(), sourcePath),
+    sourcePath: path.relative(REPO_ROOT, sourcePath),
     title: meta.title,
     publishDate: meta.publishDate || null,
     canonicalUrl,
@@ -90,7 +91,7 @@ async function main() {
   process.stdout.write(payload.body);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (typeof process !== 'undefined' && import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
     console.error(`[ithome:prepare] ${error.message}`);
     process.exitCode = 1;

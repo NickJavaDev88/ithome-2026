@@ -9,10 +9,14 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
+    "test:ithome": "vitest run scripts/ithome/*.test.mjs",
     "ithome:prepare": "node scripts/ithome/prepare.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",
     "astro": "^7.2.9"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11"
   }
 }

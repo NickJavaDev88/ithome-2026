@@ -6,6 +6,7 @@
 
 - `src/content/posts/*.md` 是文章唯一來源。
 - iThome 專用第一行會在輸出 payload 時動態加入，不寫回原始 Markdown。
+- 產生的第一行使用明確 Markdown 連結：`本文同步刊載於[個人連載網站](<canonicalUrl>)`。
 - GitHub Pages 文章網址固定由 Day 編號推導，例如 Day 5 對應 `https://gcake119.github.io/ithome-2026/day/05/`。
 - 瀏覽器操作、登入狀態與正式發文交給外部 Computer Use agent（例如 Codex）處理。
 - Repo 不保存 iThome Cookie、session、browser state 或其他登入憑證。
