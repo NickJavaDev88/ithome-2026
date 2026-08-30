@@ -1,6 +1,8 @@
 # iThome 鐵人賽 30 天發布模板
 
-這是一個可以 fork 或下載後改成自己系列的模板。同一份 Day 1～30 Markdown 文章會用在兩個地方：
+這是一個可以 fork 或下載後改成自己系列的模板。它採用「Codex Computer Use＋獨立 Playwright publisher」混合架構，目標是在保留安全檢查與人工救援能力的同時，讓正式安裝後的每日發布可以無人值守。
+
+同一份 Day 1～30 Markdown 文章會用在兩個地方：
 
 1. Astro 建置的 GitHub Pages 公開網站。
 2. 本機 publisher 準備並核對 iThome 發布內容。
@@ -8,6 +10,65 @@
 Hermes 監控是選配。沒有 Hermes，網站與 publisher 仍能使用。
 
 > 這個 repo 不會替你保存 iThome 登入資料，也不會因為執行測試就發布文章。正式 iThome 發布、GitHub Pages 部署與本機排程都需要另外明確操作及驗收。
+
+## 執行架構
+
+```mermaid
+flowchart LR
+    A[你的 Day 1～30<br/>Markdown 文章] --> C[repo]
+    B[ithome.config.json<br/>公開設定與 30 天日期表] --> C
+
+    C --> D[Astro]
+    D -->|GitHub Actions<br/>每天 09:15| E[GitHub Pages]
+
+    C --> F[獨立 Playwright<br/>本機 publisher]
+    G[已登入 iThome 的<br/>專用 Chrome] <--> F
+    F -->|每天 09:30<br/>最多點擊一次| H[iThome]
+
+    C --> N[Codex Computer Use<br/>有人操作的輔助路徑]
+    N -. 稽核／建立或修復草稿 .-> H
+
+    F --> I[machine-readable event]
+    F -->|Day 1 公開驗證後| J[verified<br/>bootstrap state]
+    I -. 選配 .-> K[Hermes watcher]
+    J -. 選配 .-> K
+    K --> L[公開系列頁 watchdog]
+    K -->|只有異常才通知| M[既有 Telegram relay]
+```
+
+### 為什麼要使用混合架構？
+
+Codex Computer Use 可以看懂 iThome 畫面，適合在有人參與時稽核、建立或修復草稿；但它的最終公開 publish click 需要當下確認，不能直接變成每天 09:30 的無人值守排程。
+
+因此，本專案把工作拆開：
+
+1. **Codex Computer Use 負責準備與救援**：依 repo payload 檢查 iThome、建立缺少的草稿、處理可安全確認的異常。這些操作由使用者在對話中明確授權。
+2. **獨立 Playwright publisher 負責每日發布**：連接本機專用 Chrome，於 09:30 重新核對帳號、系列、唯一草稿與 payload；全部吻合才最多點擊一次發布。
+3. **Hermes 負責選配監控**：正常時保持安靜，只有缺稿、重複、不一致、失敗或公開頁面異常時才通知。
+
+這種混合分工才是本專案的無人值守方案：正常日由 Playwright publisher 自動發布，不需要等人確認；發生問題才由 Hermes 通知，再使用 Codex Computer Use 或人工方式處理。無人值守能力只有在專用 Chrome、09:30 本機排程與真實發布驗收都完成後才算正式啟用。
+
+文章與公開設定都放在 repo；登入資料與執行狀態留在各自的本機環境：
+
+- GitHub Actions 只負責建置 GitHub Pages，不取得 iThome 登入資料。
+- 本機 publisher 讀取同一份文章與 `ithome.config.json`，再操作已登入的專用 Chrome。
+- Hermes 是選配，只讀 publisher event 與 verified bootstrap state；它不登入 iThome，也不負責發文。
+- Hermes 啟用後仍會透過既有公開系列頁 watchdog 自動檢查公開文章列表，不需要每天人工設定文章網址。
+
+## 最短使用順序
+
+1. Fork 或下載 repo，執行 `pnpm install`。
+2. 執行 `pnpm ithome:setup`，填入公開帳號、系列、Day 1 日期與 GitHub repo。
+3. 依初始化產生的日期表，把 Day 1～30 文章換成自己的內容。
+4. 執行 `pnpm test:ithome`、`pnpm build` 與 `pnpm ithome:prepare -- --day 1 --json`。
+5. 推送到 GitHub，啟用 GitHub Pages，確認 09:15 workflow 成功。
+6. 在 iThome 準備唯一且內容相符的草稿，再於 repo 外建立專用 Chrome profile，手動登入自己的 iThome。
+7. 另外安裝並驗收 09:30 本機 publisher 排程；repo 不會只靠 `pnpm install` 自動建立它。
+8. 需要異常 Telegram 通知時，再選配 Hermes。
+
+下面各節會逐步說明每一步；不懂指令時，可直接把「可直接交給 AI Agent 的指令」整段交給 Agent。
+
+如果只需要 GitHub Pages，做到第 5 步即可。需要自動發布到 iThome，才繼續第 6～7 步；需要 Telegram 異常通知，才設定第 8 步 Hermes。
 
 ## 先認識三種資料
 
@@ -27,29 +88,21 @@ pnpm install
 
 也可以下載 ZIP、解壓縮後進入資料夾，再執行 `pnpm install`。若使用 ZIP，之後要自行建立 GitHub repo 才能發布 Pages。
 
-## 2．換成自己的 Day 1～30 文章
-
-建立 `src/content/posts/day-01.md` 到 `day-30.md`，檔名不能跳號。每篇至少包含：
-
-```yaml
----
-title: "文章標題"
-description: "文章摘要"
-publishDate: 2026-09-01
-tags: [AI, Agent]
-draft: true
-series: "你的系列名稱"
-day: 1
----
-
-文章正文
-```
-
-`day`、檔名與 `publishDate` 必須吻合初始化後的日期表。iThome 專用同步連結會在產生 payload 時加入，不要寫回 Markdown。
-
-## 3．只做一次初始化
+## 2．只做一次初始化
 
 你必須明確提供 Day 1 的完整日期。程式不會從今天、文章順序或 iThome 畫面猜日期。
+
+執行前先準備以下 7 項公開資料：
+
+| 要準備的資料 | 白話說明 | 範例 |
+| --- | --- | --- |
+| iThome 帳號 | 別人在公開頁面看得到的帳號名稱 | `YOUR_ITHOME_NAME` |
+| 系列名稱 | 報名鐵人賽時使用的完整名稱 | `我的 30 天系列` |
+| contest tag | iThome 畫面顯示的比賽標籤 | `18th鐵人賽` |
+| contest 識別 | repo 內使用的穩定識別文字 | `18th-ironman-2026` |
+| Day 1 日期 | 正式開賽第一天，格式必須是 YYYY-MM-DD | `2026-09-01` |
+| GitHub owner | 你的 GitHub 帳號或組織名稱 | `YOUR_GITHUB_NAME` |
+| GitHub repo | fork 後的 repo 名稱 | `YOUR_REPO` |
 
 一般使用者建議直接執行互動式精靈：
 
@@ -57,7 +110,7 @@ day: 1
 pnpm ithome:setup
 ```
 
-精靈會逐題詢問 7 項公開資料，接著顯示 GitHub Pages 網址與完整 Day 1～30 日期表。只有最後回答 `yes` 或 `y` 才會寫入；回答其他內容會取消，不修改設定檔。精靈不會詢問密碼、cookie、token、Chrome profile 或登入 session。
+精靈會逐題詢問這 7 項資料，接著顯示 GitHub Pages 網址與完整 Day 1～30 日期表。只有最後回答 `yes` 或 `y` 才會寫入；回答其他內容會取消，不修改設定檔。精靈不會詢問密碼、cookie、token、Chrome profile 或登入 session。
 
 如果把 repo 交給 AI Agent，Agent 可以逐題向你詢問缺少的資料，再使用以下明確參數模式：
 
@@ -75,6 +128,28 @@ pnpm ithome:setup -- \
 兩種模式都會產生相同的 `ithome.config.json`，並明確列出 Day 1～30 的每一天。它們可以用相同資料重跑；不會建立 cookie、登入資料、排程或秘密。請人工檢查設定檔，再把它與文章一起 commit。
 
 若使用 GitHub 使用者首頁 repo（repo 名稱剛好是 `帳號.github.io`），初始化器會使用空的 Pages base；一般 project Pages 則使用 `/<repo 名稱>`。
+
+## 3．換成自己的 Day 1～30 文章
+
+建立 `src/content/posts/day-01.md` 到 `day-30.md`，檔名不能跳號。每篇至少包含：
+
+```yaml
+---
+title: "文章標題"
+description: "文章摘要"
+publishDate: 2026-09-01
+tags: [AI, Agent]
+draft: true
+series: "你的系列名稱"
+day: 1
+---
+
+文章正文
+```
+
+`day`、檔名、`publishDate` 與 `series` 必須吻合初始化後的設定與日期表。iThome 專用同步連結會在產生 payload 時加入，不要寫回 Markdown。
+
+文章還在修改時使用 `draft: true`，這樣不會出現在 GitHub Pages。確認文章可以公開後，才改成 `draft: false`，再執行測試、建置與 push。這個欄位只控制 GitHub Pages 是否顯示文章，不會代替 iThome 的草稿或發布按鈕。
 
 ## 4．本機驗證
 
@@ -95,6 +170,10 @@ pnpm ithome:prepare -- --day 1 --json
 
 workflow 也會每天在 Asia／Taipei 09:15 建置。測試通過不等於已部署；必須看到 GitHub Actions 成功與實際公開頁面。
 
+GitHub Pages 的網站外觀可以自行修改，例如顏色、字型、首頁排版、文章版型與導覽列。常見檔案位於 `src/layouts/`、`src/pages/` 與 `src/styles/`（如有）。只改網站樣式不會改變 iThome publisher 使用的文章內容。
+
+修改外觀時，請保留 `/day/01/`～`/day/30/` 文章網址規則，以及 `ithome.config.json` 產生的 Pages `site`、`base` 與 `publicUrl`。修改後重新執行 `pnpm build`，並實際打開 GitHub Pages 確認首頁、文章頁與連結正常。
+
 ## 6．準備專用 Chrome
 
 請建立獨立 Chrome profile，並由人手動登入正確的 iThome 帳號。profile 必須放在 repo 外。
@@ -111,7 +190,27 @@ macOS 範例：
 
 CDP 只能使用 `127.0.0.1`、`localhost` 或 `::1`。不可綁到 LAN／公開網路，也不可把 profile、cookie、session、密碼或一次性驗證碼交給 repo 或 Agent。
 
+### Codex Computer Use 和專用 Chrome 不是同一件事
+
+本專案可以使用 Codex Computer Use 協助操作 iThome，但它不是每天 09:30 的定時發布器。
+
+| 工具 | 適合做什麼 | 是否能作為 09:30 無人值守排程 |
+| --- | --- | --- |
+| Codex Computer Use | 在使用者對話與授權下檢查 iThome 畫面、稽核草稿、建立缺少的草稿、修復可安全確認的草稿 | 不行。公開發布屬於對外行為，Computer Use 的最終 publish click 仍需要當下確認 |
+| 獨立 Playwright publisher | 讀取 repo payload，連到本機專用 Chrome，核對唯一草稿並最多點擊一次發布 | 可以，但必須另外安裝本機排程並完成真實驗收 |
+| Hermes | 讀取結果、檢查公開系列列表、異常時通知 | 不行。Hermes 不負責發布 |
+
+Computer Use 使用的瀏覽器工作階段與無人值守 publisher 的專用 Chrome profile 都不能提交到 repo，也不要互相複製 cookie。若使用 Computer Use 建立草稿，完成後仍要由 publisher 在自己的專用 Chrome 中重新核對登入帳號、唯一草稿與 payload。
+
 ## 7．設定本機 publisher
+
+### 7.1．先在 iThome 準備草稿
+
+本機 publisher 的工作是「核對並發布既有草稿」，不會在 09:30 臨時建立草稿。每個要自動發布的 Day，都必須先在 iThome 存在一篇唯一草稿，而且標題、系列、contest tag、同步連結與正文要和 repo payload 完全一致。
+
+草稿可以由人手動建立，也可以把 repo 交給支援 Computer Use 的 AI Agent，使用專案內的 `ithome-ironman-publisher` skill 執行 `import-drafts --day N`。這是會改動 iThome 的操作，必須另外明確授權；Agent 只能建立缺少的草稿並儲存，不能刪除或覆寫衝突草稿。若尚未驗證 iThome 能安全保存多篇未來 Day 草稿，就不要一次使用 `--all`。
+
+### 7.2．提供本機環境設定
 
 以下值只放在本機執行環境，不提交：
 
@@ -125,9 +224,26 @@ export ITHOME_BOOTSTRAP_STATE="/repo外的絕對路徑/state/series-bootstrap.js
 
 公開帳號、系列名稱與 contest tag 由 `ithome.config.json` 讀取，不再寫死在 publisher。
 
+### 7.3．確認真實發布指令
+
 `pnpm ithome:publish-local -- --day 1` 會操作真實網站。只有在使用者另外明確授權真實發布時才能執行。Day 必須明確指定 1～30；publisher 最多點一次發布，結果不明就停止且不可重試。
 
 Day 1 發布後，還必須從公開文章驗證系列連結，才可建立 verified bootstrap state。Day 2～30 缺少有效 state 時會 fail closed，不會猜 series ID。
+
+### 7.4．另外安裝 09:30 排程
+
+這個 repo 提供 publisher 指令與安全規則，但不會自動修改你的作業系統排程。macOS 可以使用 LaunchAgent，Linux 可以使用 systemd timer；實際方式依執行 publisher 的電腦而定。
+
+排程必須做到：
+
+- 每天使用 Asia／Taipei 09:30。
+- 根據 `ithome.config.json` 的明確日期表找出 Day，不可只用「今天減 Day 1」的臨時計算或從 iThome 畫面猜測。
+- 在持有專用 Chrome profile 的同一個本機使用者環境執行。
+- 帶入 7.2 的本機環境設定，但不把它們寫進 repo。
+- 同一天不得平行執行或自動重試 publish click。
+- 缺文章、缺唯一草稿、登入失效或結果不明時停止並留下 machine-readable event。
+
+由於安裝排程會修改本機環境，請先完成一次不點擊發布的 preflight，再明確授權 AI Agent 安裝。安裝完成後，要求 Agent 回報排程檔位置、執行使用者、時區、下一次執行時間與 dry-run／mock 驗證結果。正式 Day 1 發布仍要等開賽後驗收。
 
 ## 8．選配 Hermes 監控
 
@@ -136,6 +252,72 @@ Hermes 只讀取 publisher 的 machine-readable event 與 verified bootstrap sta
 bootstrap 就緒後，watcher 會把已驗證的 `seriesUrl` 交給既有公開系列頁 watchdog。Hermes 自己的 deduplication state 必須放在 Hermes 私有可寫目錄，共享 event／bootstrap 位置只給它讀取權限。
 
 啟用 Hermes 需要在目標主機另行完成：目錄權限、watcher 安裝、既有 Telegram relay 串接與公開系列頁真實驗收。本 repo 不會安裝排程、不會發 Telegram，也不會建立第二個 poller。
+
+### 本專案目前的 Hermes 測試環境
+
+本專案已測試的 Hermes 安裝在同一台 Mac 上，但使用獨立的本機使用者帳號 `hermes`。它與平常操作 repo、持有 iThome Chrome profile 的使用者分開，目的是隔離檔案權限與登入資料。
+
+目前的權限分工是：
+
+- 一般使用者／publisher 可以寫入 repo 外的 event 與 bootstrap state。
+- `hermes` 使用者只能讀取共享 event 與 verified bootstrap state。
+- Hermes 的 `watcher-state.json` 只能寫在 `hermes` 自己擁有的私有目錄。
+- `hermes` 無法寫回共享 bridge，也拿不到 iThome Chrome profile、cookie 或 publisher 的登入 session。
+- Telegram credential 只留在 Hermes 既有環境，不交給 repo、publisher 或 Codex。
+
+這是本專案目前採用並做過 watcher／Telegram 異常通知驗收的隔離方式。fork 使用者不一定要把帳號命名為 `hermes`，也可以把 Hermes 安裝在另一台主機；但必須維持相同原則：publisher 負責發布，Hermes 只讀監控，而且兩邊不交換登入憑證。
+
+### 第一次要手動傳給 Hermes 的訊息
+
+Hermes 不會因為你 fork 這個 repo 就自動開始監控。第一次設定時，先把下面訊息傳給 Hermes，並替換角括號內的路徑。這則訊息只授權唯讀檢查與 dry-run，不授權安裝排程：
+
+```text
+請為 iThome publisher watcher 做開賽前唯讀檢查與 dry-run。
+
+repo 絕對路徑：
+<你的 ithome repo 絕對路徑>
+
+publisher event 目錄：
+<repo 外的 event 目錄絕對路徑>
+
+verified bootstrap state：
+<repo 外的 series-bootstrap.json 絕對路徑>
+
+Hermes 私有 state：
+<Hermes 自己可寫的目錄>/watcher-state.json
+
+請先閱讀 repo 內：
+.agents/skills/ithome-ironman-publisher/references/hermes-watcher.md
+
+確認以下規則：
+1. Hermes 只讀 event 與 verified bootstrap state，不可回寫共享 bridge。
+2. watcher-state.json 必須放在 Hermes 私有可寫目錄。
+3. notifications 非空時，才透過目前既有的 Telegram Gateway 以 --no-agent 傳送。
+4. 正常結果保持安靜，不建立第二個 Telegram poller。
+5. bootstrap ready 後，把已驗證的 seriesUrl 與 seriesId 交給既有公開系列頁 watchdog；不可自行猜系列網址。
+6. 不登入 iThome、不取得 cookie、不讀取草稿或文章正文。
+
+本次只執行 fixture dry-run 與權限檢查，不安裝排程、不重啟 Gateway、不發真實 Telegram。完成後回報實際使用的路徑、dry-run 結果、通知是否為空，以及仍待授權的動作。
+```
+
+dry-run 與權限檢查通過後，如果你確定要啟用 Hermes，再另外傳送：
+
+```text
+我已確認前一次 iThome publisher watcher dry-run 與路徑檢查結果。
+
+現在授權你在目前 Hermes 環境完成以下設定：
+1. 使用既有 watcher 與 notify adapter 建立每 5 分鐘執行的 watcher。
+2. notifications 非空時，才透過目前既有的 Telegram Gateway 以 --no-agent 傳送；成功時保持安靜。
+3. 不建立第二個 Telegram poller。
+4. Hermes 去重 state 只寫入前次確認的 Hermes 私有目錄，不回寫共享 bridge。
+5. Day 1 另外建立 19:00 的 day1-1900 checkpoint 與 22:30 的 day1-2230 checkpoint。
+6. bootstrap ready 後，使用 verified seriesUrl 啟用既有公開系列頁 watchdog；不需要每天人工設定文章網址。
+7. 建立後立即做一次不產生通知的驗收，回報 job ID、排程、執行模式、state 路徑與下一次執行時間。
+
+若驗收產生 notifications，先把通知內容回報給我；不要為了測試而製造真實 publisher 失敗事件，也不要登入或操作 iThome。
+```
+
+這兩段訊息只處理選配監控，不會建立 09:30 iThome publisher 排程。Publisher 排程必須在持有專用 Chrome profile 的本機環境另外安裝與驗收。
 
 ## Fail closed 安全規則
 
@@ -152,15 +334,38 @@ bootstrap 就緒後，watcher 會把已驗證的 `seriesUrl` 交給既有公開�
 ## 可直接交給 AI Agent 的指令
 
 ```text
-請協助設定這個 iThome 鐵人賽模板。
+請協助我把這個 repo 設定成自己的 iThome 鐵人賽 30 天發布專案。
 
-先完整閱讀 README.md、AGENTS.md（如有）、.agents/skills/ithome-ironman-publisher/SKILL.md 與它要求的 references。先執行 git status，保護 dirty worktree；不可 reset、restore、checkout 或 clean。
+第一階段只做唯讀盤點：
+1. 完整閱讀 README.md、AGENTS.md（如有）、.agents/skills/ithome-ironman-publisher/SKILL.md 與任務需要的 references。
+2. 執行 git status，保護現有 dirty worktree；不可 reset、restore、checkout 或 clean。
+3. 檢查目前 ithome.config.json、Day 1～30 文章、GitHub workflow、Astro 設定、publisher 與測試狀態。
+4. 清楚區分哪些值仍是模板作者的範例，哪些已經換成我的資料。
 
-確認 Day 1～30 文章後，逐題詢問我尚未提供的資料：公開 iThome 帳號、完整系列名稱、contest tag、contest 識別、Day 1 YYYY-MM-DD、GitHub owner 與 repo 名稱。一次只問一題，不可猜日期或自行補值。資料齊全後使用明確參數執行 pnpm ithome:setup，再檢查 ithome.config.json 的 30 天日期與 Pages 網址。
+第二階段完成公開設定：
+逐題詢問我尚未提供的 7 項資料：公開 iThome 帳號、完整系列名稱、contest tag、contest 識別、Day 1 YYYY-MM-DD、GitHub owner、GitHub repo。一次只問一題，不可猜日期或自行補值。
 
-接著執行 pnpm test:ithome、pnpm build、pnpm ithome:prepare -- --day 1 --json 與 git diff --check。掃描 repo 是否出現真實草稿 ID、個人絕對路徑、cookie、token、密碼、Chrome profile、登入 session 或 Hermes 私有 runtime state。
+資料齊全後，以明確參數執行 pnpm ithome:setup。檢查 ithome.config.json 已標示 initialized，Day 1～30 日期連續且 Pages site、base、publicUrl 正確。
 
-除非我另外明確授權，不可登入或操作真實 iThome、不可點擊發布、不可 commit／push／merge／部署、不可安裝排程、不可操作 Hermes 或發 Telegram。任何遠端結果不確定時 fail closed，不可重試 publish click。
+第三階段替換與檢查文章：
+1. 協助把我提供的文章寫入 src/content/posts/day-01.md 到 day-30.md；如果文章尚未提供齊全，列出缺少的 Day，不可自行虛構內容。
+2. 讓每篇檔名、day、publishDate、series 都符合 ithome.config.json。
+3. 未準備公開的文章保持 draft: true；只有經我確認的文章才改成 draft: false。
+4. 不要把 iThome 同步連結寫回 Markdown，讓 payload producer 自動加入。
+
+第四階段做本機驗證：
+執行 pnpm test:ithome、pnpm build、pnpm ithome:prepare -- --day 1 --json 與 git diff --check。掃描 repo 是否出現真實草稿 ID、個人絕對路徑、cookie、token、密碼、Chrome profile、登入 session、Telegram credential 或 Hermes 私有 runtime state。
+
+完成後先回報：修改檔案、測試結果、Pages 預期網址、文章缺漏、尚未執行的真實操作，以及建議的 atomic commits。
+
+授權邊界：
+- 沒有我的另外明確授權，不可 commit、push、merge、部署或修改 GitHub 設定。
+- 沒有我的另外明確授權，不可啟動 Codex Computer Use 登入或操作真實 iThome、建立草稿或點擊發布。
+- 如果我授權使用 Codex Computer Use，請先讀取 computer-use skill 與 publisher 的 ui-workflows.md。Computer Use 只作為有人操作的稽核／草稿輔助路徑，不可宣稱它是 09:30 無人值守 publisher。
+- 沒有我的另外明確授權，不可安裝 09:30 本機排程、操作 Hermes、建立 Hermes 排程或發 Telegram。
+- 如果之後獲准建立 iThome 草稿，只能建立缺少且內容完全相符的草稿，不得刪除或覆寫。
+- 如果之後獲准安裝 09:30 排程，必須使用獨立 Playwright publisher 與專用 Chrome，不可使用 Codex Computer Use 充當排程。先做不點擊發布的 preflight，並回報排程位置、執行使用者、時區與下一次執行時間。
+- 遇到 Cloudflare、CAPTCHA、429、登入失效、重複草稿、頁面不確定或發布結果不明時立即停止。每次 run 最多一次 publish click，結果不明不得重試。
 ```
 
 ## 目前模板提供的能力
@@ -170,9 +375,25 @@ bootstrap 就緒後，watcher 會把已驗證的 `seriesUrl` 交給既有公開�
 - 明確的 Day 1～30 日期表與 Pages URL 設定。
 - repo payload producer、inventory、event、bootstrap 與 browser adapter 契約。
 - loopback-only CDP 與最多一次 publish click 的 fail-closed publisher。
+- Codex Computer Use 草稿輔助＋獨立 Playwright 定時發布的混合架構。
 - 選配、只讀的 Hermes watcher 交接契約。
 
 仍需每位使用者自己完成並驗收：30 篇正式文章、GitHub Pages 首次成功部署、專用 Chrome 登入、本機 event／state 目錄、Day 1 真實發布與 bootstrap、Day 2～30 真實運作，以及選配 Hermes 的主機設定。
+
+## 看不懂名詞時先看這裡
+
+- **repo**：這個專案資料夾，也是文章與公開設定的正式來源。
+- **fork**：在自己的 GitHub 帳號複製一份 repo，之後可以獨立修改。
+- **payload**：從某一篇 Markdown 產生、準備交給 iThome 的發布資料；它不等於已經發布。
+- **publisher**：在本機核對並發布既有 iThome 草稿的程式。
+- **Codex Computer Use**：讓 Codex 在使用者授權下操作可見瀏覽器畫面的工具，適合稽核與草稿處理；不是本專案的無人值守排程。
+- **Playwright runner**：獨立安裝在本機、連接專用 Chrome 的程式，是 09:30 無人值守 publisher 使用的瀏覽器路徑。
+- **Chrome profile**：Chrome 保存登入狀態的本機資料夾，必須留在 repo 外。
+- **CDP**：讓 publisher 連到專用 Chrome 的本機控制介面，本專案只允許 loopback。
+- **bootstrap state**：Day 1 發布後，經公開頁面確認的系列網址與識別資料。
+- **watcher**：只負責檢查 publisher 結果的程式，不負責發布。
+- **fail closed**：遇到不確定狀況就停止，避免重複或錯誤發布。
+- **dry-run**：只驗證流程、不進行正式寫入或發布的演練。
 
 ## 技術文件
 
