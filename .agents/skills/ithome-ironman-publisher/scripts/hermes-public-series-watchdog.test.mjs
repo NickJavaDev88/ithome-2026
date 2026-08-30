@@ -45,6 +45,31 @@ describe('Hermes public series watchdog', () => {
     });
   });
 
+  test('ignores unrelated article links outside the series main content', () => {
+    const htmlWithSidebar = `${seriesHtml}
+      <aside><a href="/articles/sidebar-999">Recommended article</a></aside>`;
+
+    expect(evaluatePublicSeries({ expected, bootstrap, seriesHtml: htmlWithSidebar, articleHtml })).toEqual({
+      status: 'verified',
+      notifications: [],
+      articleUrl: expected.articleUrl,
+    });
+  });
+
+  test('fails as unreadable instead of guessing when the series main content is missing', () => {
+    const result = evaluatePublicSeries({
+      expected,
+      bootstrap,
+      seriesHtml: '<div><a href="/articles/123456">Day 12 test</a></div>',
+      articleHtml,
+    });
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      notifications: [{ kind: 'public_watchdog_unavailable', reasonCode: 'series_content_unrecognized' }],
+    });
+  });
+
   test('notifies when the expected article is absent from the public series page', () => {
     const result = evaluatePublicSeries({
       expected,

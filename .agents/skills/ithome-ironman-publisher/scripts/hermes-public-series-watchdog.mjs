@@ -26,10 +26,18 @@ function text(value) {
     .trim();
 }
 
+function seriesMainContent(html) {
+  const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1];
+  if (main === undefined) return null;
+  return main.replace(/<(aside|nav|footer)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
+}
+
 function articleLinks(html, seriesUrl) {
+  const content = seriesMainContent(html);
+  if (content === null) return null;
   const links = [];
   const pattern = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
-  for (const match of html.matchAll(pattern)) {
+  for (const match of content.matchAll(pattern)) {
     const href = match[1].match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1];
     if (!href) continue;
     try {
@@ -62,6 +70,9 @@ export function evaluatePublicSeries({ expected, bootstrap, seriesHtml, articleH
   }
 
   const links = articleLinks(seriesHtml, bootstrap.seriesUrl);
+  if (links === null) {
+    return { status: 'failed', notifications: [{ kind: 'public_watchdog_unavailable', ...base, reasonCode: 'series_content_unrecognized' }] };
+  }
   const entry = links.find((item) => item.url === expectedUrl);
   if (!entry) return { status: 'failed', notifications: [{ kind: 'public_article_missing', ...base }] };
   if (links.at(-1)?.url !== expectedUrl) return { status: 'failed', notifications: [{ kind: 'public_article_not_latest', ...base, latestArticleUrl: links.at(-1)?.url }] };
