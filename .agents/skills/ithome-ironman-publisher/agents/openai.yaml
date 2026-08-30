@@ -1,0 +1,6 @@
+interface:
+  display_name: "iThome 鐵人賽發文"
+  short_description: "安全盤點、匯入、修復與發布 2026 鐵人賽文章"
+  default_prompt: "Use $ithome-ironman-publisher to audit the 2026 iThome drafts and report any missing or conflicting Day entries."
+policy:
+  allow_implicit_invocation: true

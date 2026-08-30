@@ -9,7 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "test:ithome": "vitest run scripts/ithome/*.test.mjs",
+    "test:ithome": "vitest run scripts/ithome/*.test.mjs .agents/skills/ithome-ironman-publisher/scripts/*.test.mjs",
     "ithome:prepare": "node scripts/ithome/prepare.mjs"
   },
   "dependencies": {
