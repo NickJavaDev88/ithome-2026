@@ -18,6 +18,23 @@ The adapter must audit the intended account, exact unique draft, title, canonica
 
 The core is silent only when the result is `verified`. Every result still writes a machine-readable event so the Hermes watcher can deduplicate it. Hermes decides whether an anomaly needs Telegram relay; Hermes does not invoke the runner and does not hold iThome credentials.
 
+## Playwright browser adapter
+
+The repository includes two adapter layers:
+
+- `scripts/browser-adapter.mjs` owns the fail-closed publish state machine. It checks verified bootstrap state, account／series identity, unique draft, public duplicate state, exact payload fields, one-click maximum, and post-click verification.
+- `scripts/playwright-browser-driver.mjs` connects to a user-owned local Chrome through Playwright CDP. It never launches a replacement browser, exports cookies, copies the profile, or closes the user-owned Chrome process.
+
+The local deployment must provide all of the following outside Git:
+
+- a dedicated Chrome process started with an HTTP CDP endpoint bound to loopback only;
+- a non-default user-data directory owned by the publisher user;
+- an existing login to the intended iThome account;
+- the exact draft-list URL and public article-list URL for that account;
+- the expected account name, full registered series title, and contest tag.
+
+The driver refuses non-loopback CDP endpoints and non-iThome workflow URLs. An ordinary Chrome window without an enabled CDP endpoint cannot be attached. Do not expose the CDP port to the LAN, copy the Computer Use profile, or commit local URLs／profile paths.
+
 ## Current readiness
 
-The decision core and event／watcher contracts are repository-controlled. A real browser adapter, its isolated profile, service definition, production schedule, and live iThome acceptance are intentionally not installed or enabled by this repository change. Until those items pass on-host acceptance, unattended publishing is a target architecture rather than a current production capability.
+The decision core, Playwright browser adapter, and event／watcher contracts are repository-controlled and covered by mock tests. The isolated Chrome profile, service definition, 09:30 production schedule, and live iThome acceptance are not installed or enabled by this repository change. Until those items pass on-host acceptance, unattended publishing remains a target architecture rather than a current production capability.

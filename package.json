@@ -10,13 +10,15 @@
     "preview": "astro preview",
     "check": "astro check",
     "test:ithome": "vitest run scripts/ithome/*.test.mjs .agents/skills/ithome-ironman-publisher/scripts/*.test.mjs",
-    "ithome:prepare": "node scripts/ithome/prepare.mjs"
+    "ithome:prepare": "node scripts/ithome/prepare.mjs",
+    "ithome:publish-local": "node .agents/skills/ithome-ironman-publisher/scripts/run-browser-publisher.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",
     "astro": "^7.2.9"
   },
   "devDependencies": {
+    "playwright-core": "^1.62.1",
     "vitest": "^4.1.11"
   }
 }
