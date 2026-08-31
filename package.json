@@ -9,9 +9,10 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "test:ithome": "vitest run scripts/ithome/*.test.mjs .agents/skills/ithome-ironman-publisher/scripts/*.test.mjs",
+    "test:ithome": "vitest run scripts/ithome/*.test.mjs src/**/*.test.ts .agents/skills/ithome-ironman-publisher/scripts/*.test.mjs",
     "ithome:setup": "node scripts/ithome/setup.mjs",
     "ithome:prepare": "node scripts/ithome/prepare.mjs",
+    "verify:public": "node scripts/verify-public-distribution.mjs",
     "ithome:publish-local": "node .agents/skills/ithome-ironman-publisher/scripts/run-browser-publisher.mjs"
   },
   "dependencies": {
@@ -19,7 +20,9 @@
     "astro": "^7.2.9"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
     "playwright-core": "^1.62.1",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   }
 }
