@@ -1,5 +1,16 @@
 # iThome 鐵人賽 30 天發布模板
 
+## 共用內容模板
+
+本專案把內容分成兩種：
+
+- `src/content/ironman/day-01.md`～`day-30.md`：鐵人賽主系列。Day 1～30 與日期必須連續，網址固定為 `/day/NN/`，也是 `ithome:prepare` 唯一會讀取的內容。
+- `src/content/extensions/*.md`：延伸閱讀。可以在任意日期發布，網址為 `/articles/<slug>/`，不占 Day 編號、不影響三十天進度，也不會進入 iThome publisher。
+
+`ithome.config.json` 使用 schemaVersion 2，集中設定系列名稱、首頁導言、可自訂的學習地圖章節、延伸閱讀標題、品牌資產與 GitHub Pages。學習地圖章節數量不限五個；文章以穩定的 `section` ID 對應章節。
+
+目前文章都是清楚標示的開發期佔位內容，正式寫作前請完整替換。
+
 這是一個可以 fork 或下載後改成自己系列的模板。它採用「Codex Computer Use＋獨立 Playwright publisher」混合架構，目標是在保留安全檢查與人工救援能力的同時，讓正式安裝後的每日發布可以無人值守。
 
 同一份 Day 1～30 Markdown 文章會用在兩個地方：
@@ -72,7 +83,8 @@ Codex Computer Use 可以看懂 iThome 畫面，適合在有人參與時稽核�
 
 ## 先認識三種資料
 
-- `src/content/posts/day-01.md`～`day-30.md`：文章唯一正式來源。
+- `src/content/ironman/day-01.md`～`day-30.md`：鐵人賽文章唯一正式來源。
+- `src/content/extensions/*.md`：延伸閱讀來源，不進入 publisher。
 - `ithome.config.json`：可提交的公開設定，例如帳號顯示名稱、系列名稱、比賽標籤、30 天日期與 GitHub Pages 網址。
 - repo 外的本機資料：Chrome profile、cookie、登入 session、事件目錄、bootstrap state、Telegram credential。這些永遠不能 commit。
 
@@ -129,9 +141,9 @@ pnpm ithome:setup -- \
 
 若使用 GitHub 使用者首頁 repo（repo 名稱剛好是 `帳號.github.io`），初始化器會使用空的 Pages base；一般 project Pages 則使用 `/<repo 名稱>`。
 
-## 3．換成自己的 Day 1～30 文章
+## 3．換成自己的 Day 1～30 文章與延伸閱讀
 
-建立 `src/content/posts/day-01.md` 到 `day-30.md`，檔名不能跳號。每篇至少包含：
+建立 `src/content/ironman/day-01.md` 到 `day-30.md`，檔名不能跳號。每篇至少包含：
 
 ```yaml
 ---
@@ -140,14 +152,29 @@ description: "文章摘要"
 publishDate: 2026-09-01
 tags: [AI, Agent]
 draft: true
-series: "你的系列名稱"
 day: 1
+section: "foundation"
 ---
 
 文章正文
 ```
 
-`day`、檔名、`publishDate` 與 `series` 必須吻合初始化後的設定與日期表。iThome 專用同步連結會在產生 payload 時加入，不要寫回 Markdown。
+`day`、檔名、`publishDate` 與設定日期表必須吻合；`section` 必須是 `learningMap.sections` 中已設定的 ID。iThome 專用同步連結會在產生 payload 時加入，不要寫回 Markdown。
+
+延伸閱讀放在 `src/content/extensions/`：
+
+```yaml
+---
+title: "參賽心得"
+slug: "ironman-retrospective"
+description: "完成三十天後的回顧"
+publishDate: 2026-10-15
+draft: true
+relatedDays: [1, 30]
+---
+```
+
+`relatedDays` 可省略；填入時只能指向現有的 Day 1～30。
 
 文章還在修改時使用 `draft: true`，這樣不會出現在 GitHub Pages。確認文章可以公開後，才改成 `draft: false`，再執行測試、建置與 push。這個欄位只控制 GitHub Pages 是否顯示文章，不會代替 iThome 的草稿或發布按鈕。
 
@@ -409,7 +436,7 @@ Hermes 私有資料夾：請讓 Hermes 回報它實際使用的位置，不要�
 資料齊全後，以明確參數執行 pnpm ithome:setup。檢查 ithome.config.json 已標示 initialized，Day 1～30 日期連續且 Pages site、base、publicUrl 正確。
 
 第三階段替換與檢查文章：
-1. 協助把我提供的文章寫入 src/content/posts/day-01.md 到 day-30.md；如果文章尚未提供齊全，列出缺少的 Day，不可自行虛構內容。
+1. 協助把我提供的文章寫入 src/content/ironman/day-01.md 到 day-30.md；如果文章尚未提供齊全，列出缺少的 Day，不可自行虛構內容。
 2. 讓每篇檔名、day、publishDate、series 都符合 ithome.config.json。
 3. 未準備公開的文章保持 draft: true；只有經我確認的文章才改成 draft: false。
 4. 不要把 iThome 同步連結寫回 Markdown，讓 payload producer 自動加入。
