@@ -35,6 +35,7 @@ const lastRead = {
         <SeriesMark />
         <span>
           <strong>{project.seriesTitle}</strong>
+          <strong class="mobile-brand-title">30 天 AI 協作學習誌</strong>
           <small>一份寫給 AI 協作初學者的學習誌</small>
         </span>
       </a>
@@ -45,6 +46,43 @@ const lastRead = {
         <div class="reading-progress" role="progressbar" aria-label="系列閱讀進度" aria-valuemin="1" aria-valuemax="30" aria-valuenow={post.data.day}>
           <span style={`--progress: ${(post.data.day / 30) * 100}%`}></span>
         </div>
+      </div>
+
+      <div class="mobile-series-context">
+        <span><strong>Day {post.data.day}</strong>／30 · Part {post.data.part}</span>
+        <details class="mobile-series-directory">
+          <summary>系列目錄</summary>
+          <nav aria-label="手機版 30 天系列文章">
+            {[...parts.entries()].map(([part, items]) => (
+              <section class="sidebar-part">
+                <h3>Part {part} <span>｜</span> {items[0].data.partTitle}</h3>
+                <ol>
+                  {items.map((item) => {
+                    const published = isPublished(item);
+                    const active = item.data.day === post.data.day;
+                    const label = item.data.title.replace(/^Day\s*\d+｜/, '');
+                    return (
+                      <li class:list={[{ active, locked: !published && !active }]}>
+                        {published || active ? (
+                          <a href={`${base}${dayPath(item.data.day).slice(1)}`} aria-current={active ? 'page' : undefined}>
+                            <span class="day-chip">Day {String(item.data.day).padStart(2, '0')}</span>
+                            <span class="sidebar-title">{label}</span>
+                            {item.data.publishDate && <time>{item.data.publishDate.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}</time>}
+                          </a>
+                        ) : (
+                          <div class="locked-row">
+                            <span class="day-chip">Day {String(item.data.day).padStart(2, '0')}</span>
+                            <span class="sidebar-title">{label}</span>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+            ))}
+          </nav>
+        </details>
       </div>
 
       <nav class="series-tree" aria-label="30 天系列文章">
