@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import SeriesMark from '../components/SeriesMark.astro';
 import { dayPath, getAllPosts, isPublished } from '../lib/posts';
 import { loadProjectConfigSync } from '../../scripts/ithome/config.mjs';
 
@@ -8,21 +9,22 @@ const parts = Map.groupBy(allPosts, (item) => item.data.part);
 const base = import.meta.env.BASE_URL;
 const project = loadProjectConfigSync();
 const storageKey = `${project.seriesKey}:last-read`;
+const publishedCount = allPosts.filter((post) => isPublished(post)).length;
 ---
 <BaseLayout title={project.seriesTitle}>
   <div class="reader-layout">
     <aside class="series-sidebar">
       <a class="sidebar-brand" href={base} aria-current="page">
-        <span class="code-mark">&lt;/&gt;</span>
+        <SeriesMark />
         <span>
           <strong>{project.seriesTitle}</strong>
-          <small>iThome 鐵人賽 30 天連載</small>
+          <small>一份寫給 AI 協作初學者的學習誌</small>
         </span>
       </a>
 
       <div class="sidebar-heading">
-        <h2><a href={base} aria-current="page">系列導覽</a></h2>
-        <p>Day 1～30 文章導覽。</p>
+        <h2><a href={base} aria-current="page">30 天學習地圖</a></h2>
+        <p>目前已公開 {publishedCount} 篇，按照自己的速度往下讀。</p>
       </div>
 
       <nav class="series-tree" aria-label="30 天系列文章">
@@ -60,10 +62,10 @@ const storageKey = `${project.seriesKey}:last-read`;
 
     <main class="reading-pane guide-pane">
       <article class="series-guide">
-        <p class="guide-kicker">iThome 鐵人賽 · 30 天系列</p>
+        <p class="guide-kicker">AI 協作開發，從小白開始</p>
         <h1>{project.seriesTitle}</h1>
-        <p class="guide-lead">Day 1～30 系列文章</p>
-        <p class="guide-summary">此網站內容由 repo 內的 Markdown 文章產生，並與 iThome 發布流程共用同一份文章來源。</p>
+        <p class="guide-lead">不只把功能做出來，也慢慢學會怎麼想、怎麼驗證、怎麼把事情交付出去。</p>
+        <p class="guide-summary">這裡收錄完整的 30 天學習路線。沒有預設你已經懂工程術語；每一篇都從真實問題出發，把 AI 協作開發拆成可以跟上的步驟。</p>
 
         <a id="resume-reading" class="resume-reading" href="#" hidden>
           <span class="resume-label">繼續上次閱讀</span>
@@ -74,15 +76,15 @@ const storageKey = `${project.seriesKey}:last-read`;
 
         <section class="guide-parts">
           <div class="guide-section-heading">
-            <span>30 DAYS</span>
-            <h2>這 30 天會怎麼走</h2>
+            <span>共五個階段</span>
+            <h2>先看懂這趟路怎麼走</h2>
           </div>
           {[...parts.entries()].map(([part, items]) => (
             <div class="guide-part-row">
               <span class="guide-part-number">Part {part}</span>
               <div>
                 <h3>{items[0].data.partTitle}</h3>
-                <p>包含 {items.length} 篇文章。</p>
+                <p>{items.length} 篇文章，循序建立一段完整能力。</p>
               </div>
             </div>
           ))}

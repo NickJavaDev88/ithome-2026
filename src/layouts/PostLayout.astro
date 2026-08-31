@@ -1,5 +1,6 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import SeriesMark from '../components/SeriesMark.astro';
 import { dayPath, getAllPosts, isPublished, type Post } from '../lib/posts';
 import { loadProjectConfigSync } from '../../scripts/ithome/config.mjs';
 
@@ -31,16 +32,19 @@ const lastRead = {
   <div class="reader-layout">
     <aside class="series-sidebar">
       <a class="sidebar-brand" href={base}>
-        <span class="code-mark">&lt;/&gt;</span>
+        <SeriesMark />
         <span>
           <strong>{project.seriesTitle}</strong>
-          <small>iThome 鐵人賽 30 天連載</small>
+          <small>一份寫給 AI 協作初學者的學習誌</small>
         </span>
       </a>
 
       <div class="sidebar-heading">
-        <h2><a href={base}>系列導覽</a></h2>
-        <p>Day 1～30 文章導覽。</p>
+        <h2><a href={base}>第 {post.data.day} 天，共 30 天</a></h2>
+        <p>你正在 Part {post.data.part}，可以隨時從下方切換文章。</p>
+        <div class="reading-progress" role="progressbar" aria-label="系列閱讀進度" aria-valuemin="1" aria-valuemax="30" aria-valuenow={post.data.day}>
+          <span style={`--progress: ${(post.data.day / 30) * 100}%`}></span>
+        </div>
       </div>
 
       <nav class="series-tree" aria-label="30 天系列文章">
