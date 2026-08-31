@@ -1,61 +1,57 @@
-# Design QA：鐵人賽 30 天系列識別
+# Design QA：手機版文章閱讀介面
 
 ## 比對基準
 
-- Source visual truth：`/Users/caiyijun/.codex/generated_images/01a05697-5051-7122-bd45-8aae03504046/exec-16680281-ee1e-48e8-b091-395eae42e245.png`
-- Implementation screenshot（亮色）：`/Users/caiyijun/project/ithome-2026/output/playwright/ironman-30-mark-light-revised.png`
-- Implementation screenshot（暗色）：`/Users/caiyijun/project/ithome-2026/output/playwright/ironman-30-mark-dark-revised.png`
-- Implementation screenshot（手機）：`/Users/caiyijun/project/ithome-2026/output/playwright/ironman-30-mark-mobile.png`
-- Theme toggle（桌面）：`/Users/caiyijun/project/ithome-2026/output/playwright/theme-toggle-top-right-desktop.png`
-- Theme toggle（手機）：`/Users/caiyijun/project/ithome-2026/output/playwright/theme-toggle-top-right-mobile.png`
-- Full-view comparison：`/Users/caiyijun/project/ithome-2026/output/playwright/ironman-30-mark-comparison.png`
-- Focused comparison：`/Users/caiyijun/project/ithome-2026/output/playwright/ironman-30-mark-revised-comparison.png`
-- Favicon 16px evidence：`/Users/caiyijun/project/ithome-2026/output/playwright/ironman-30-favicon-16px.png`
-- Source pixels：1254 × 1254。
-- Desktop implementation pixels：1280 × 1113；CSS viewport：1280 × 1024；device scale factor：1。
-- Mobile CSS viewport：390 × 844；device scale factor：1。
-- Density normalization：focused comparison 以等比例縮放並排；未將不同密度造成的差異列為缺失。
-- State：首頁、亮色與暗色佈景、桌面與 390px 手機寬度。
+- Source visual truth：`/Users/caiyijun/.codex/generated_images/01a05744-2162-7ae0-9132-84ab1d083fa8/exec-bdb14d4b-7a49-4a41-ad0a-0730ec5c4cd6.png`。
+- Implementation screenshot（最終暗色）：`output/playwright/mobile-reader-dark-final.png`。
+- Implementation screenshot（亮色）：`output/playwright/mobile-reader-light.png`。
+- Implementation screenshot（目錄展開）：`output/playwright/mobile-reader-directory-open.png`。
+- Desktop regression screenshot：`output/playwright/desktop-reader-regression.png`。
+- Full-view comparison：`output/playwright/mobile-reader-dark-final-comparison.png`。
+- Source pixels：853 × 1844；Implementation pixels：375 × 1940；CSS viewport：390 × 844；device scale factor：1。
+- Density normalization：來源與實作都等比例縮放到 390px 寬後並排；較短一側只在底部補深灰，不把內容長度差異誤判為版面缺失。
+- State：Day 27 文章、390px 手機寬度、暗色主比對；另驗證亮色、目錄展開及 1280px 桌面版。
 
 ## Findings
 
 - 沒有尚未處理的 P0、P1 或 P2 問題。
-- [P3] 16px favicon 的斜角與氣泡指向帶有些微點陣柔化。
-  - Location：`public/favicon.png`。
-  - Evidence：16px 放大檢查仍可讀為「30」，但對話指向比 52px 側欄版本柔和。
-  - Impact：不影響辨識或操作，僅是極小尺寸的光學微調空間。
-  - Follow-up：若未來需要更銳利，可另製作 16px 專用像素修正版。
+- [P3] 來源示意圖只呈現一個短段落，實作保留完整 Markdown 測試文章，因此整頁較長。
+  - Location：文章正文。
+  - Evidence：並排圖左側在第一節後進入上下篇，右側仍有第二節、條列與引用。
+  - Impact：不影響首屏層級或閱讀操作；這是內容完整性的刻意差異。
+  - Follow-up：不調整，避免為了符合示意圖而截斷文章。
 
 ## 五項必要檢查
 
-- Fonts and typography：Noto Sans TC 已載入；首頁標題為 76px；字重、行高、換行與方案字級一致。
-- Spacing and layout rhythm：桌面維持雙欄；標誌為 52 × 52px。佈景按鈕固定在整個視窗右上角，桌面距上、右各 20px，手機距上、右各 14px。手機標誌為 46 × 46px，頁面 `scrollWidth` 與 `clientWidth` 同為 390px，沒有水平溢位。
-- Colors and visual tokens：側欄固定使用暖白 3＋檸檬黃 0，favicon 使用石墨黑＋檸檬黃；與石墨灰、暖白、檸檬黃系統一致。
-- Image quality and asset fidelity：正式圖示來自選定提案的生成資產並經透明背景與純色整理；0 的下方指向已移除，只保留 3 的單一指向；沒有以手工 SVG 或 CSS 圖形替代。
-- Copy and content：無障礙名稱為「鐵人賽 30 天 AI 協作開發系列」；系列文案與既有內容未被圖示更新改寫。
+- Fonts and typography：沿用 Noto Sans TC；手機標題約 37px、兩行呈現，正文 17px／1.9 行高。標題、Part、正文及節次層級與來源一致，沒有截斷或水平溢位。
+- Spacing and layout rhythm：手機頁首由初版 164px 收斂為 130px；文章標題頂端位於 201px，第一個 844px 視窗可看到標題、導言與第一節。桌面仍維持 350px／915px 雙欄，手機專用內容在桌面為隱藏。
+- Colors and visual tokens：延續石墨灰、暖白、檸檬黃；亮暗切換都保留足夠層級，沒有引入漸層或科技藍。
+- Image quality and asset fidelity：沿用正式 30 對話氣泡資產，沒有重新繪製或以 CSS／文字符號替代；42px 手機尺寸仍清楚。
+- Copy and content：保留原文章、日期、Part 名稱與上下篇標題；手機新增「30 天 AI 協作學習誌」及「系列目錄」白話入口。
 
-## Interaction and console checks
+## Interaction、accessibility 與 console
 
-- 佈景切換可在亮色／暗色間切換，`aria-label` 同步更新。
-- 按鈕為 44 × 44px 圓形觸控目標；亮色顯示太陽，暗色顯示月亮，沒有可見文字標籤。
-- 亮色與暗色狀態皆顯示正確側欄圖示資產。
-- 瀏覽器分頁圖示連結解析至 `/ithome-2026/favicon.png`。
-- Browser console：0 errors、0 warnings。
+- 「系列目錄」使用原生 `details`／`summary`，關閉時只占一列，開啟後顯示 Part 與文章清單；目前文章保留 `aria-current="page"`。
+- 目錄按鈕取得焦點後可開合；展開狀態中 Day 27 正確高亮。
+- 佈景按鈕維持 44 × 44px；暗色顯示月亮、亮色顯示太陽，`aria-label` 與 `aria-pressed` 同步。
+- 上下篇在手機維持雙欄、中央分隔線與左右方向；連結文字完整。
+- 390px CSS viewport 下文件沒有水平溢位；Browser console 為 0 errors、0 warnings。
+- `prefers-reduced-motion` 既有規則保留。
 
 ## Comparison history
 
-1. 初次實作發現 [P1]：亮色頁面的深色側欄載入黑色 3，造成 3 與背景融合，只剩黃色 0 清楚可見。
-2. 修正：側欄固定使用暖白 3＋黃色 0；黑黃版本保留給 favicon。
-3. 使用者調整：移除 0 下方的對話指向，重新生成圖示，只保留 3 左下方的單一指向。
-4. 修正後證據：`ironman-30-mark-light-revised.png`、`ironman-30-mark-dark-revised.png` 與 `ironman-30-mark-revised-comparison.png`。桌面與手機皆可辨識「30」，沒有新的 P0、P1 或 P2。
-5. 佈景按鈕由側欄左下移至整個視窗右上角，改為單一太陽／月亮圖示。桌面與 390px 手機版皆無溢位，切換狀態與無障礙名稱同步。
+1. 初版手機頁首高度為 164px，較來源約多 34px，文章標題頂端為 243px，列為 [P2] 首屏節奏偏鬆。
+2. 修正品牌列、進度列、情境列與文章上方間距；最終頁首為 130px，標題頂端為 201px。
+3. 修正後重新擷取 `mobile-reader-dark-final.png`，並產生 `mobile-reader-dark-final-comparison.png`；來源與實作的首屏順序、標題兩行、目錄入口及上下篇雙欄一致，先前 P2 已解除。
 
 ## Implementation Checklist
 
-- [x] 以修正版 30 對話氣泡取代舊圖示。
-- [x] 建立亮色、暗色、favicon 與 Apple touch icon 資產。
-- [x] 驗證桌面雙欄、390px 手機版及佈景切換。
-- [x] 將佈景按鈕固定於視窗右上角，驗證太陽／月亮圖示狀態。
-- [x] 通過 Astro build、91 項測試與 `git diff --check`。
+- [x] 手機頁首改為緊湊品牌列、系列進度與 Day／Part 情境列。
+- [x] 完整系列清單收進可操作的原生目錄。
+- [x] 手機文章標題、Part 與正文節奏對齊選定方向。
+- [x] 亮暗切換維持單一太陽／月亮圖示與 44px 觸控目標。
+- [x] 手機上下篇維持雙欄指示。
+- [x] 驗證 390px 暗色、亮色、目錄展開、console 及 1280px 桌面回歸。
+- [x] 通過 Astro build 與 `git diff --check`。
 
 final result: passed
