@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { loadProjectConfig } from './config.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const POSTS_DIR = path.join(REPO_ROOT, 'src/content/posts');
+const POSTS_DIR = path.join(REPO_ROOT, 'src/content/ironman');
 
 function parseArgs(argv) {
   const args = { day: null, json: false };
@@ -43,11 +43,11 @@ function parseScalarFrontmatter(frontmatter) {
   return result;
 }
 
-export async function prepareIthomePayload(day) {
-  const project = await loadProjectConfig({ requireInitialized: true });
+export async function prepareIthomePayload(day, options = {}) {
+  const project = options.project ?? await loadProjectConfig({ requireInitialized: true });
   const dayString = String(day).padStart(2, '0');
   const filename = `day-${dayString}.md`;
-  const sourcePath = path.join(POSTS_DIR, filename);
+  const sourcePath = path.join(options.postsDir ?? POSTS_DIR, filename);
   const markdown = await fs.readFile(sourcePath, 'utf8');
   const { frontmatter, body } = splitFrontmatter(markdown);
   const meta = parseScalarFrontmatter(frontmatter);

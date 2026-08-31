@@ -1,7 +1,9 @@
 ---
+import { loadProjectConfigSync } from '../../scripts/ithome/config.mjs';
 const base = import.meta.env.BASE_URL;
+const { brand } = loadProjectConfigSync();
 ---
-<span class="series-mark" role="img" aria-label="鐵人賽 30 天 AI 協作開發系列">
-  <img class="series-mark__image series-mark__image--light" src={`${base}assets/ai-collaboration-mark.png`} alt="" width="1024" height="1024" />
-  <img class="series-mark__image series-mark__image--dark" src={`${base}assets/ai-collaboration-mark-dark.png`} alt="" width="1024" height="1024" />
+<span class="series-mark" role="img" aria-label={brand.mark.alt}>
+  <img class="series-mark__image series-mark__image--light" src={`${base}${brand.mark.light}`} alt="" width="1012" height="1012" />
+  <img class="series-mark__image series-mark__image--dark" src={`${base}${brand.mark.dark}`} alt="" width="1012" height="1012" />
 </span>

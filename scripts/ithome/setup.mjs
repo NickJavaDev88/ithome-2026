@@ -1,141 +1,110 @@
 #!/usr/bin/env node
-
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
-import { CONFIG_PATH, saveProjectConfig, validateProjectConfig } from './config.mjs';
+import { CONFIG_PATH, PUBLIC_DIR, publicAssetStatus, saveProjectConfig, validateProjectConfig } from './config.mjs';
 
 const REQUIRED = ['account', 'series-title', 'contest-tag', 'contest', 'day1-date', 'github-owner', 'github-repo'];
-
-function validDate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? '')) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
-}
-
-function addDays(date, offset) {
-  const value = new Date(`${date}T00:00:00.000Z`);
-  value.setUTCDate(value.getUTCDate() + offset);
-  return value.toISOString().slice(0, 10);
-}
+export const DEFAULT_TEMPLATE = {
+  site: { tagline: '一份陪你完成三十天挑戰的學習誌', home: { kicker: '從第一天開始，建立自己的學習路線', lead: '每天完成一個主題，也保留回頭整理與延伸探索的空間。', summary: '這裡收錄完整的三十天鐵人賽文章，並在賽後持續補充心得與實作筆記。' } },
+  learningMap: { title: '三十天學習地圖', description: '依照自己的速度，從基礎一路走到回顧與整合。', sectionHeading: '先看懂這趟路怎麼走', sectionLabel: '階段', sections: [
+    { id: 'foundation', title: '建立基礎', description: '先理解題目、工具與合作方式。' },
+    { id: 'practice', title: '開始實作', description: '把觀念帶進可驗證的小型任務。' },
+    { id: 'reflection', title: '整理與延伸', description: '回顧做法，建立可以繼續使用的方法。' },
+  ] },
+  extensions: { enabled: true, title: '延伸閱讀', description: '鐵人賽以外的心得、補充與後續實作。' },
+  brand: { mark: { light: 'assets/ai-collaboration-mark.png', dark: 'assets/ai-collaboration-mark-dark.png', alt: 'iThome 鐵人賽系列標誌' }, favicon: 'favicon.png', appleTouchIcon: 'apple-touch-icon.png' },
+};
+const secretPattern = /-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:password|cookie|token|session|telegram)[=:]\s*\S+/i;
+function validDate(value) { if (!/^\d{4}-\d{2}-\d{2}$/.test(value ?? '')) return false; const date = new Date(`${value}T00:00:00.000Z`); return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value; }
+function addDays(date, offset) { const value = new Date(`${date}T00:00:00.000Z`); value.setUTCDate(value.getUTCDate() + offset); return value.toISOString().slice(0, 10); }
+function required(value) { return typeof value === 'string' && value.trim() ? null : '此欄位不可留白。'; }
+function safePublicText(value) { return secretPattern.test(value) ? '偵測到可能的密碼、cookie、token、session 或私鑰；秘密資料不可寫入公開設定。' : null; }
 
 export function buildProjectConfig(input) {
-  for (const key of ['account', 'seriesTitle', 'contestTag', 'contest', 'githubOwner', 'githubRepo']) {
-    if (typeof input?.[key] !== 'string' || !input[key].trim()) throw new Error(`${key} is required`);
-  }
+  for (const key of ['account', 'seriesTitle', 'contestTag', 'contest', 'githubOwner', 'githubRepo']) if (required(input?.[key])) throw new Error(`${key} is required`);
   if (!validDate(input.day1Date)) throw new Error('day1Date must be an explicit YYYY-MM-DD date');
-  if (!/^[A-Za-z0-9_.-]+$/.test(input.githubOwner) || !/^[A-Za-z0-9_.-]+$/.test(input.githubRepo)) {
-    throw new Error('GitHub owner and repo may contain only letters, numbers, dot, underscore, and hyphen');
-  }
-  const site = `https://${input.githubOwner}.github.io`;
+  if (!/^[A-Za-z0-9_.-]+$/.test(input.githubOwner) || !/^[A-Za-z0-9_.-]+$/.test(input.githubRepo)) throw new Error('GitHub owner and repo may contain only letters, numbers, dot, underscore, and hyphen');
+  for (const value of Object.values(input)) if (typeof value === 'string' && safePublicText(value)) throw new Error(safePublicText(value));
+  const siteUrl = `https://${input.githubOwner}.github.io`;
   const base = input.githubRepo === `${input.githubOwner}.github.io` ? '' : `/${input.githubRepo}`;
+  const template = structuredClone(DEFAULT_TEMPLATE);
   const config = {
-    schemaVersion: 1,
-    initialized: true,
-    account: input.account.trim(),
-    seriesTitle: input.seriesTitle.trim(),
-    contestTag: input.contestTag.trim(),
-    contest: input.contest.trim(),
-    repository: `${input.githubOwner}/${input.githubRepo}`,
-    seriesKey: input.githubRepo,
-    day1Date: input.day1Date,
-    schedule: Array.from({ length: 30 }, (_, index) => ({ day: index + 1, date: addDays(input.day1Date, index) })),
-    githubPages: { site, base, publicUrl: `${site}${base}` },
+    schemaVersion: 2, initialized: true,
+    publication: { type: 'ithome-ironman', totalDays: 30, account: input.account.trim(), seriesTitle: input.seriesTitle.trim(), contestTag: input.contestTag.trim(), contest: input.contest.trim(), repository: `${input.githubOwner}/${input.githubRepo}`, seriesKey: input.githubRepo, day1Date: input.day1Date, schedule: Array.from({ length: 30 }, (_, index) => ({ day: index + 1, date: addDays(input.day1Date, index) })) },
+    site: input.site ?? template.site, learningMap: input.learningMap ?? template.learningMap,
+    extensions: input.extensions ?? template.extensions, brand: input.brand ?? template.brand,
+    githubPages: { site: siteUrl, base, publicUrl: `${siteUrl}${base}` },
   };
   const errors = validateProjectConfig(config, { requireInitialized: true });
   if (errors.length) throw new Error(`Generated invalid config: ${errors.join(', ')}`);
   return config;
 }
-
-export async function writeProjectConfig(target, config) {
-  await saveProjectConfig(target, config);
-}
-
+export async function writeProjectConfig(target, config) { await saveProjectConfig(target, config); }
 export function parseSetupArgs(argv) {
   const values = {};
-  for (let index = 0; index < argv.length; index += 1) {
-    const token = argv[index];
-    if (!token.startsWith('--')) throw new Error(`Unknown argument: ${token}`);
-    const key = token.slice(2);
-    if (!REQUIRED.includes(key)) throw new Error(`Unknown argument: ${token}`);
-    const value = argv[++index];
-    if (!value || value.startsWith('--')) throw new Error(`Missing value for ${token}`);
-    values[key] = value;
-  }
+  for (let index = 0; index < argv.length; index += 1) { const token = argv[index]; if (!token.startsWith('--')) throw new Error(`Unknown argument: ${token}`); const key = token.slice(2); if (!REQUIRED.includes(key)) throw new Error(`Unknown argument: ${token}`); const value = argv[++index]; if (!value || value.startsWith('--')) throw new Error(`Missing value for ${token}`); values[key] = value; }
   for (const key of REQUIRED) if (!values[key]) throw new Error(`--${key} is required`);
-  return {
-    account: values.account,
-    seriesTitle: values['series-title'],
-    contestTag: values['contest-tag'],
-    contest: values.contest,
-    day1Date: values['day1-date'],
-    githubOwner: values['github-owner'],
-    githubRepo: values['github-repo'],
-  };
+  return { account: values.account, seriesTitle: values['series-title'], contestTag: values['contest-tag'], contest: values.contest, day1Date: values['day1-date'], githubOwner: values['github-owner'], githubRepo: values['github-repo'] };
 }
-
-async function askRequired(ask, prompt) {
-  const value = (await ask(prompt)).trim();
-  if (!value) throw new Error(`${prompt}不可留白`);
-  return value;
-}
-
-export async function runInteractiveSetup({ ask, output, write = (config) => writeProjectConfig(CONFIG_PATH, config) }) {
-  if (![ask, output, write].every((value) => typeof value === 'function')) {
-    throw new Error('interactive setup requires ask, output, and write functions');
+async function askValue({ ask, output, prompt, validate = required, defaultValue }) {
+  while (true) {
+    const answer = (await ask(prompt)).trim();
+    const value = answer || defaultValue || '';
+    const error = safePublicText(value) ?? await validate(value);
+    if (!error) return value;
+    output(`輸入格式不正確：${error}`);
+    output('請重新輸入。');
   }
+}
+async function askAsset({ ask, output, label, defaultValue, publicDir }) {
+  return askValue({ ask, output, defaultValue, prompt: `${label}\n請輸入 public/ 底下的相對路徑；例如 assets/series-mark.png 會對應 public/assets/series-mark.png。\n不可使用網址、絕對路徑或 ../。直接按 Enter 使用：${defaultValue}\n請輸入：`, validate: async (value) => { const status = await publicAssetStatus(value, publicDir); return status.valid && status.exists ? null : `找不到或不允許此路徑：public/${value}`; } });
+}
+export async function runInteractiveSetup({ ask, output, write = (config) => writeProjectConfig(CONFIG_PATH, config), publicDir = PUBLIC_DIR }) {
+  if (![ask, output, write].every((value) => typeof value === 'function')) throw new Error('interactive setup requires ask, output, and write functions');
   output('iThome 鐵人賽模板初始化');
-  output('以下只會詢問可公開、可提交的設定；請勿輸入密碼、cookie、token 或登入 session。');
-  const input = {
-    account: await askRequired(ask, '公開 iThome 帳號：'),
-    seriesTitle: await askRequired(ask, '完整系列名稱：'),
-    contestTag: await askRequired(ask, 'iThome 畫面顯示的 contest tag：'),
-    contest: await askRequired(ask, '穩定的 contest 識別：'),
-    day1Date: await askRequired(ask, 'Day 1 日期（YYYY-MM-DD）：'),
-    githubOwner: await askRequired(ask, 'GitHub owner：'),
-    githubRepo: await askRequired(ask, 'GitHub repo 名稱：'),
-  };
-  const config = buildProjectConfig(input);
-  output('');
-  output('請確認即將寫入的公開設定：');
-  output(`iThome 帳號：${config.account}`);
-  output(`系列名稱：${config.seriesTitle}`);
-  output(`contest tag：${config.contestTag}`);
-  output(`GitHub Pages：${config.githubPages.publicUrl}`);
-  output('Day 1～30 日期：');
-  for (const item of config.schedule) output(`Day ${item.day}：${item.date}`);
-  const confirmed = (await ask('以上資料正確並寫入 ithome.config.json？（yes／no）：')).trim().toLowerCase();
-  if (!['yes', 'y'].includes(confirmed)) {
-    output('已取消，沒有修改設定檔。');
-    return { status: 'cancelled' };
+  output('以下只會詢問可公開、可提交的設定；請勿輸入密碼、cookie、token、登入 session、Chrome profile、Telegram 憑證或私鑰。');
+  const mode = await askValue({ ask, output, prompt: '設定方式（必填）\n輸入 quick 使用預設網站文案與章節；輸入 full 逐項自訂。\n直接按 Enter 使用：quick\n請輸入：', defaultValue: 'quick', validate: (value) => ['quick', 'full'].includes(value) ? null : '只能輸入 quick 或 full。' });
+  const input = {};
+  const fields = [
+    ['account', '公開 iThome 帳號（必填）\n只輸入公開帳號，例如 gcake119。\n請輸入：', required],
+    ['seriesTitle', '完整系列名稱（必填）\n會顯示在網站標題與 RSS，例如：我的三十天學習挑戰。\n請輸入：', required],
+    ['contestTag', 'iThome 畫面顯示的 contest tag（必填）\n例如：18th鐵人賽。\n請輸入：', required],
+    ['contest', '穩定的 contest 識別（必填）\n例如：18th-ironman-2026。\n請輸入：', required],
+    ['day1Date', 'Day 1 日期（必填）\n格式必須是 YYYY-MM-DD，例如：2026-09-01。程式會產生連續三十天。\n請輸入：', (value) => validDate(value) ? null : '日期必須是有效的 YYYY-MM-DD，例如 2026-09-01。'],
+    ['githubOwner', 'GitHub owner（必填）\n只輸入帳號或組織名稱，例如：example-user。\n請輸入：', (value) => /^[A-Za-z0-9_.-]+$/.test(value) ? null : '只能使用英數字、點、底線與連字號。'],
+    ['githubRepo', 'GitHub repo 名稱（必填）\n只輸入 repo 名稱，例如：my-ironman；不要貼完整網址。\n請輸入：', (value) => /^[A-Za-z0-9_.-]+$/.test(value) ? null : '只能使用英數字、點、底線與連字號。'],
+  ];
+  for (const [key, prompt, validate] of fields) input[key] = await askValue({ ask, output, prompt, validate });
+  if (mode === 'full') {
+    const template = structuredClone(DEFAULT_TEMPLATE);
+    template.site.tagline = await askValue({ ask, output, prompt: `網站副標（必填）\n例如：一份陪你完成三十天挑戰的學習誌。\n直接按 Enter 使用：${template.site.tagline}\n請輸入：`, defaultValue: template.site.tagline });
+    template.learningMap.title = await askValue({ ask, output, prompt: `學習地圖名稱（必填）\n例如：三十天學習地圖。\n直接按 Enter 使用：${template.learningMap.title}\n請輸入：`, defaultValue: template.learningMap.title });
+    template.brand.mark.light = await askAsset({ ask, output, label: '亮色模式標誌', defaultValue: template.brand.mark.light, publicDir });
+    template.brand.mark.dark = await askAsset({ ask, output, label: '暗色模式標誌', defaultValue: template.brand.mark.dark, publicDir });
+    template.brand.mark.alt = await askValue({ ask, output, prompt: `標誌文字說明（必填）\n提供給螢幕閱讀器，例如：我的鐵人賽系列標誌。\n直接按 Enter 使用：${template.brand.mark.alt}\n請輸入：`, defaultValue: template.brand.mark.alt });
+    Object.assign(input, template);
   }
-  await write(config);
-  output('初始化完成。請執行 pnpm test:ithome、pnpm build，再檢查 ithome.config.json。');
-  return { status: 'configured', config };
+  const config = buildProjectConfig(input);
+  output(''); output('請確認即將寫入 ithome.config.json：');
+  output('【iThome 鐵人賽】'); output(`帳號：${config.publication.account}`); output(`系列名稱：${config.publication.seriesTitle}`); output(`Day 1：${config.publication.schedule[0].date}`); output(`Day 30：${config.publication.schedule[29].date}`);
+  output('【網站與學習地圖】'); output(`網站副標：${config.site.tagline}`); output(`學習地圖：${config.learningMap.title}`); output(`章節數：${config.learningMap.sections.length}`); config.learningMap.sections.forEach((section) => output(`－${section.title}`));
+  output('【延伸閱讀】'); output(`${config.extensions.enabled ? '已啟用' : '未啟用'}：${config.extensions.title}`);
+  output('【品牌資產】'); output(`亮色標誌：public/${config.brand.mark.light}`); output(`暗色標誌：public/${config.brand.mark.dark}`); output(`標誌文字說明：${config.brand.mark.alt}`);
+  output('【GitHub Pages】'); output(config.githubPages.publicUrl);
+  const confirmed = (await ask('以上資料正確並寫入 ithome.config.json？（yes／no）：')).trim().toLowerCase();
+  if (!['yes', 'y'].includes(confirmed)) { output('已取消，沒有修改設定檔。'); return { status: 'cancelled' }; }
+  await write(config); output('初始化完成。請執行 pnpm test:ithome、pnpm check、pnpm build，再檢查 ithome.config.json。'); return { status: 'configured', config };
 }
-
 async function main() {
   const argv = process.argv.slice(2);
   if (argv.length === 0) {
-    if (!process.stdin.isTTY || !process.stdout.isTTY) {
-      throw new Error('Interactive setup requires a terminal. For an Agent or automation, pass all documented --arguments.');
-    }
+    if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error('Interactive setup requires a terminal. For an Agent or automation, pass all documented --arguments.');
     const terminal = createInterface({ input: process.stdin, output: process.stdout });
-    try {
-      await runInteractiveSetup({
-        ask: (prompt) => terminal.question(prompt),
-        output: (line) => process.stdout.write(`${line}\n`),
-      });
-    } finally {
-      terminal.close();
-    }
+    try { await runInteractiveSetup({ ask: (prompt) => terminal.question(prompt), output: (line) => process.stdout.write(`${line}\n`) }); } finally { terminal.close(); }
     return;
   }
-  const config = buildProjectConfig(parseSetupArgs(argv));
-  await writeProjectConfig(CONFIG_PATH, config);
-  process.stdout.write(`${JSON.stringify({ status: 'configured', path: resolve(CONFIG_PATH), publicUrl: config.githubPages.publicUrl, day1Date: config.day1Date, day30Date: config.schedule[29].date }, null, 2)}\n`);
+  const config = buildProjectConfig(parseSetupArgs(argv)); await writeProjectConfig(CONFIG_PATH, config);
+  process.stdout.write(`${JSON.stringify({ status: 'configured', path: resolve(CONFIG_PATH), publicUrl: config.githubPages.publicUrl, day1Date: config.publication.day1Date, day30Date: config.publication.schedule[29].date }, null, 2)}\n`);
 }
-
-if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
-  main().catch((error) => { process.stderr.write(`[ithome:setup] ${error.message}\n`); process.exitCode = 1; });
-}
+if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) main().catch((error) => { process.stderr.write(`[ithome:setup] ${error.message}\n`); process.exitCode = 1; });

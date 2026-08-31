@@ -235,6 +235,15 @@ a:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 .guide-part-number { padding-top: 3px; color: var(--accent-deep); font-size: 0.75rem; font-weight: 800; }
 .guide-part-row h3 { margin: 0; color: var(--ink-strong); font-size: 1.1875rem; line-height: 1.45; }
 .guide-part-row p { max-width: 560px; margin: 8px 0 0; color: var(--ink-soft); font-size: 0.875rem; line-height: 1.75; }
+.extension-list { margin-top: 92px; padding-top: 28px; border-top: 2px solid var(--ink-strong); }
+.extension-list h2 { margin: 0 0 28px; color: var(--ink-strong); font-size: clamp(1.5rem, 2.8vw, 2rem); }
+.extension-card { display: grid; gap: 7px; padding: 24px 0; border-top: 1px solid var(--line); text-decoration: none; }
+.extension-card time { color: var(--accent-deep); font-size: 0.75rem; font-weight: 800; }
+.extension-card strong { color: var(--ink-strong); font-size: 1.25rem; line-height: 1.45; }
+.extension-card span { color: var(--ink-soft); line-height: 1.7; }
+.related-days { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); }
+.related-days h2 { font-size: 1.25rem; }
+.related-days a { color: var(--accent-deep); text-underline-offset: 0.2em; }
 
 @media (max-width: 1080px) {
   .reader-layout { grid-template-columns: minmax(270px, 310px) minmax(0, 1fr); }

@@ -1,14 +1,51 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "initialized": false,
-  "account": "gcake119",
-  "seriesTitle": "AI 都會寫程式了，我還要學什麼？——從「做得出來」到學會開發的 30 天",
-  "contestTag": "18th鐵人賽",
-  "contest": "18th-ironman-2026",
-  "repository": "gcake119/ithome-2026",
-  "seriesKey": "ithome-2026",
-  "day1Date": null,
-  "schedule": [],
+  "publication": {
+    "type": "ithome-ironman",
+    "totalDays": 30,
+    "account": "gcake119",
+    "seriesTitle": "我的 iThome 鐵人賽系列",
+    "contestTag": "18th鐵人賽",
+    "contest": "18th-ironman-2026",
+    "repository": "gcake119/ithome-2026",
+    "seriesKey": "ithome-2026",
+    "day1Date": null,
+    "schedule": []
+  },
+  "site": {
+    "tagline": "一份陪你完成三十天挑戰的學習誌",
+    "home": {
+      "kicker": "從第一天開始，建立自己的學習路線",
+      "lead": "每天完成一個主題，也保留回頭整理與延伸探索的空間。",
+      "summary": "這裡收錄完整的三十天鐵人賽文章，並在賽後持續補充心得與實作筆記。"
+    }
+  },
+  "learningMap": {
+    "title": "三十天學習地圖",
+    "description": "依照自己的速度，從基礎一路走到回顧與整合。",
+    "sectionHeading": "先看懂這趟路怎麼走",
+    "sectionLabel": "階段",
+    "sections": [
+      { "id": "foundation", "title": "建立基礎", "description": "先理解題目、工具與合作方式。" },
+      { "id": "practice", "title": "開始實作", "description": "把觀念帶進可驗證的小型任務。" },
+      { "id": "reflection", "title": "整理與延伸", "description": "回顧做法，建立可以繼續使用的方法。" }
+    ]
+  },
+  "extensions": {
+    "enabled": true,
+    "title": "延伸閱讀",
+    "description": "鐵人賽以外的心得、補充與後續實作。"
+  },
+  "brand": {
+    "mark": {
+      "light": "assets/ai-collaboration-mark.png",
+      "dark": "assets/ai-collaboration-mark-dark.png",
+      "alt": "iThome 鐵人賽系列標誌"
+    },
+    "favicon": "favicon.png",
+    "appleTouchIcon": "apple-touch-icon.png"
+  },
   "githubPages": {
     "site": "https://gcake119.github.io",
     "base": "/ithome-2026",

@@ -1,0 +1,18 @@
+---
+import { render } from 'astro:content';
+import ExtensionLayout from '../../layouts/ExtensionLayout.astro';
+import { getContentIndex, isPublished, type ExtensionPost, type IronmanPost } from '../../lib/posts';
+export async function getStaticPaths() {
+  const { ironman, extensions } = await getContentIndex();
+  const published = extensions.filter((post) => isPublished(post));
+  return published.map((post, index) => ({ params: { slug: post.data.slug }, props: {
+    post, previous: index > 0 ? published[index - 1] : undefined,
+    next: index < published.length - 1 ? published[index + 1] : undefined,
+    related: (post.data.relatedDays ?? []).map((day) => ironman.find((item) => item.data.day === day)).filter(Boolean),
+  } }));
+}
+interface Props { post: ExtensionPost; previous?: ExtensionPost; next?: ExtensionPost; related: IronmanPost[]; }
+const { post, previous, next, related } = Astro.props;
+const { Content } = await render(post);
+---
+<ExtensionLayout {post} {previous} {next} {related}><Content /></ExtensionLayout>

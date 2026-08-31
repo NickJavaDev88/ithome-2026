@@ -1,18 +1,24 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
-const posts = defineCollection({
-  loader: glob({ pattern: '**/*.md', base: './src/content/posts' }),
+const ironman = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/ironman' }),
   schema: z.object({
-    title: z.string(),
-    day: z.number().int().min(1).max(30),
-    part: z.number().int().min(1).max(5),
-    partTitle: z.string(),
-    description: z.string().optional(),
-    publishDate: z.coerce.date().optional(),
-    draft: z.boolean().default(true),
+    title: z.string().min(1), description: z.string().optional(),
+    day: z.number().int().min(1).max(30), section: z.string().min(1),
+    publishDate: z.coerce.date(), draft: z.boolean().default(true),
     ithomeUrl: z.string().url().optional(),
   }),
 });
 
-export const collections = { posts };
+const extensions = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/extensions' }),
+  schema: z.object({
+    title: z.string().min(1), slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    description: z.string().optional(), publishDate: z.coerce.date(),
+    draft: z.boolean().default(true), relatedDays: z.array(z.number().int().min(1).max(30)).optional(),
+    tags: z.array(z.string()).optional(),
+  }),
+});
+
+export const collections = { ironman, extensions };

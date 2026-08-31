@@ -1,112 +1,42 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SeriesMark from '../components/SeriesMark.astro';
-import { dayPath, getAllPosts, isPublished } from '../lib/posts';
+import { dayPath, extensionPath, getContentIndex, isPublished } from '../lib/posts';
 import { loadProjectConfigSync } from '../../scripts/ithome/config.mjs';
-
-const allPosts = await getAllPosts();
-const parts = Map.groupBy(allPosts, (item) => item.data.part);
-const base = import.meta.env.BASE_URL;
+const { ironman, extensions } = await getContentIndex();
 const project = loadProjectConfigSync();
-const storageKey = `${project.seriesKey}:last-read`;
-const publishedCount = allPosts.filter((post) => isPublished(post)).length;
+const { publication, site, learningMap } = project;
+const base = import.meta.env.BASE_URL;
+const publishedCount = ironman.filter((post) => isPublished(post)).length;
+const publishedExtensions = extensions.filter((post) => isPublished(post));
+const storageKey = `${publication.seriesKey}:last-read`;
 ---
-<BaseLayout title={project.seriesTitle}>
+<BaseLayout title={publication.seriesTitle}>
   <div class="reader-layout">
     <aside class="series-sidebar">
-      <a class="sidebar-brand" href={base} aria-current="page">
-        <SeriesMark />
-        <span>
-          <strong>{project.seriesTitle}</strong>
-          <small>一份寫給 AI 協作初學者的學習誌</small>
-        </span>
-      </a>
-
-      <div class="sidebar-heading">
-        <h2><a href={base} aria-current="page">30 天學習地圖</a></h2>
-        <p>目前已公開 {publishedCount} 篇，按照自己的速度往下讀。</p>
-      </div>
-
-      <nav class="series-tree" aria-label="30 天系列文章">
-        {[...parts.entries()].map(([part, items]) => (
-          <section class="sidebar-part">
-            <h3>Part {part} <span>｜</span> {items[0].data.partTitle}</h3>
-            <ol>
-              {items.map((item) => {
-                const published = isPublished(item);
-                const label = item.data.title.replace(/^Day\s*\d+｜/, '');
-                return (
-                  <li class:list={[{ locked: !published }]}>
-                    {published ? (
-                      <a href={`${base}${dayPath(item.data.day).slice(1)}`}>
-                        <span class="timeline-dot" aria-hidden="true"></span>
-                        <span class="day-chip">Day {String(item.data.day).padStart(2, '0')}</span>
-                        <span class="sidebar-title">{label}</span>
-                        {item.data.publishDate && <time>{item.data.publishDate.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}</time>}
-                      </a>
-                    ) : (
-                      <div class="locked-row">
-                        <span class="timeline-dot" aria-hidden="true"></span>
-                        <span class="day-chip">Day {String(item.data.day).padStart(2, '0')}</span>
-                        <span class="sidebar-title">{label}</span>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-        ))}
+      <a class="sidebar-brand" href={base} aria-current="page"><SeriesMark /><span><strong>{publication.seriesTitle}</strong><small>{site.tagline}</small></span></a>
+      <div class="sidebar-heading"><h2><a href={base} aria-current="page">{learningMap.title}</a></h2><p>目前已公開 {publishedCount} 篇。{learningMap.description}</p></div>
+      <nav class="series-tree" aria-label={`${publication.totalDays} 天系列文章`}>
+        {learningMap.sections.map((section, index) => {
+          const items = ironman.filter((item) => item.data.section === section.id);
+          return <section class="sidebar-part"><h3>{learningMap.sectionLabel} {index + 1} <span>｜</span> {section.title}</h3><ol>
+            {items.map((item) => <li class:list={[{ locked: !isPublished(item) }]}>
+              {isPublished(item) ? <a href={`${base}${dayPath(item.data.day).slice(1)}`}><span class="day-chip">Day {String(item.data.day).padStart(2, '0')}</span><span class="sidebar-title">{item.data.title.replace(/^Day\s*\d+｜/, '')}</span><time>{item.data.publishDate.toLocaleDateString('zh-TW')}</time></a> : <div class="locked-row"><span class="day-chip">Day {String(item.data.day).padStart(2, '0')}</span><span class="sidebar-title">{item.data.title.replace(/^Day\s*\d+｜/, '')}</span></div>}
+            </li>)}
+          </ol></section>;
+        })}
       </nav>
     </aside>
-
     <main class="reading-pane guide-pane">
       <article class="series-guide">
-        <p class="guide-kicker">AI 協作開發，從小白開始</p>
-        <h1>{project.seriesTitle}</h1>
-        <p class="guide-lead">不只把功能做出來，也慢慢學會怎麼想、怎麼驗證、怎麼把事情交付出去。</p>
-        <p class="guide-summary">這裡收錄完整的 30 天學習路線。沒有預設你已經懂工程術語；每一篇都從真實問題出發，把 AI 協作開發拆成可以跟上的步驟。</p>
-
-        <a id="resume-reading" class="resume-reading" href="#" hidden>
-          <span class="resume-label">繼續上次閱讀</span>
-          <strong id="resume-title"></strong>
-          <span id="resume-day"></span>
-          <span class="resume-arrow">繼續閱讀 →</span>
-        </a>
-
-        <section class="guide-parts">
-          <div class="guide-section-heading">
-            <span>共五個階段</span>
-            <h2>先看懂這趟路怎麼走</h2>
-          </div>
-          {[...parts.entries()].map(([part, items]) => (
-            <div class="guide-part-row">
-              <span class="guide-part-number">Part {part}</span>
-              <div>
-                <h3>{items[0].data.partTitle}</h3>
-                <p>{items.length} 篇文章，循序建立一段完整能力。</p>
-              </div>
-            </div>
-          ))}
+        <p class="guide-kicker">{site.home.kicker}</p><h1>{publication.seriesTitle}</h1><p class="guide-lead">{site.home.lead}</p><p class="guide-summary">{site.home.summary}</p>
+        <a id="resume-reading" class="resume-reading" href="#" hidden><span class="resume-label">繼續上次閱讀</span><strong id="resume-title"></strong><span id="resume-day"></span><span class="resume-arrow">繼續閱讀 →</span></a>
+        <section class="guide-parts"><div class="guide-section-heading"><span>共 {learningMap.sections.length} 個{learningMap.sectionLabel}</span><h2>{learningMap.sectionHeading}</h2></div>
+          {learningMap.sections.map((section, index) => { const count = ironman.filter((item) => item.data.section === section.id).length; return <div class="guide-part-row"><span class="guide-part-number">{learningMap.sectionLabel} {index + 1}</span><div><h3>{section.title}</h3><p>{section.description}（{count} 篇）</p></div></div>; })}
         </section>
+        {project.extensions.enabled && publishedExtensions.length > 0 && <section class="extension-list"><p class="guide-kicker">{project.extensions.title}</p><h2>{project.extensions.description}</h2>{publishedExtensions.map((item) => <a class="extension-card" href={`${base}${extensionPath(item.data.slug).slice(1)}`}><time>{item.data.publishDate.toLocaleDateString('zh-TW')}</time><strong>{item.data.title}</strong><span>{item.data.description}</span></a>)}</section>}
       </article>
     </main>
   </div>
-
-  <script is:inline define:vars={{ storageKey }}>
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
-      if (saved && saved.href && saved.title && saved.day) {
-        const card = document.getElementById('resume-reading');
-        const title = document.getElementById('resume-title');
-        const day = document.getElementById('resume-day');
-        if (card && title && day) {
-          card.href = saved.href;
-          title.textContent = saved.title;
-          day.textContent = `Day ${String(saved.day).padStart(2, '0')}`;
-          card.hidden = false;
-        }
-      }
-    } catch (_) {}
-  </script>
+  <script is:inline define:vars={{ storageKey }}>try { const saved = JSON.parse(localStorage.getItem(storageKey) || 'null'); if (saved?.href && saved?.title && saved?.day) { const card = document.getElementById('resume-reading'); if (card) { card.href = saved.href; card.hidden = false; document.getElementById('resume-title').textContent = saved.title; document.getElementById('resume-day').textContent = `Day ${String(saved.day).padStart(2, '0')}`; } } } catch (_) {}</script>
 </BaseLayout>
