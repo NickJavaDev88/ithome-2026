@@ -4,12 +4,12 @@
   "publication": {
     "type": "ithome-ironman",
     "totalDays": 30,
-    "account": "gcake119",
+    "account": "YOUR_ITHOME_NAME",
     "seriesTitle": "系列標題",
     "contestTag": "18th鐵人賽",
     "contest": "18th-ironman-2026",
-    "repository": "gcake119/ithome-2026",
-    "seriesKey": "ithome-2026",
+    "repository": "your-github-name/your-repo",
+    "seriesKey": "your-series",
     "day1Date": null,
     "schedule": []
   },
@@ -27,9 +27,21 @@
     "sectionHeading": "學習階段總覽",
     "sectionLabel": "階段",
     "sections": [
-      { "id": "foundation", "title": "第一階段標題", "description": "在這裡說明第一階段的學習重點與涵蓋內容。" },
-      { "id": "practice", "title": "第二階段標題", "description": "在這裡說明第二階段的學習重點與涵蓋內容。" },
-      { "id": "reflection", "title": "第三階段標題", "description": "在這裡說明第三階段的學習重點與涵蓋內容。" }
+      {
+        "id": "foundation",
+        "title": "第一階段標題",
+        "description": "在這裡說明第一階段的學習重點與涵蓋內容。"
+      },
+      {
+        "id": "practice",
+        "title": "第二階段標題",
+        "description": "在這裡說明第二階段的學習重點與涵蓋內容。"
+      },
+      {
+        "id": "reflection",
+        "title": "第三階段標題",
+        "description": "在這裡說明第三階段的學習重點與涵蓋內容。"
+      }
     ]
   },
   "extensions": {
@@ -47,8 +59,8 @@
     "appleTouchIcon": "apple-touch-icon.png"
   },
   "githubPages": {
-    "site": "https://gcake119.github.io",
-    "base": "/ithome-2026",
-    "publicUrl": "https://gcake119.github.io/ithome-2026"
+    "site": "https://your-github-name.github.io",
+    "base": "/your-repo",
+    "publicUrl": "https://your-github-name.github.io/your-repo"
   }
 }
